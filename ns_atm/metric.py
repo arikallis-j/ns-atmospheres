@@ -181,7 +181,6 @@ def dS_metric(th, ph, R, cos_eta, Surface):
         theta_0 = Surface.get_point(th - 1, ph).theta
         theta_1 = Surface.get_point(th, ph).theta
         dcos_th = 1.0 - (abs(cos(theta_0) + cos(theta_1))) / 2.0
-    print((theta)*DEG, dcos_th)
 
     dS = 1 / cos_eta * R**2 * abs(dcos_th) * dphi
     return dS

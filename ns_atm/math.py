@@ -174,6 +174,22 @@ def sin(x):
 def cos(x):
     return np.cos(x)
 
+def gaussian(x, mu=1.0, sig=1.0):
+    return 1.0 / (np.sqrt(2.0 * np.pi) * sig) * np.exp(-np.power((x - mu) / sig, 2.0) / 2)
+
+def norm_gauss(x, mu=1.0, sig=1.0):
+    return gaussian(x, mu=mu, sig=sig) / gaussian(mu, mu=mu, sig=sig)
+
+def cutting(Spectrum, Gauss):
+    CutSpectrum = []
+    N = len(Spectrum)
+    for k in range(N):
+        if Spectrum[k]>Gauss[k]:
+            CutSpectrum.append(Gauss[k])
+        else:
+            CutSpectrum.append(Spectrum[k])
+    return CutSpectrum
+
 def P_0(cos_th):
     return 1.0
 
@@ -204,8 +220,6 @@ def inverse(f, y0, args=(), pw=5, base=0.0):
             x1 = x2
         x0 = (x1 + x2)/2
     return round(x0, pw-1)
-
-
 
 def f_30(X, F, N, l):
     l = min(N,l) - 1                                                  
