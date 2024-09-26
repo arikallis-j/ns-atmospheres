@@ -154,13 +154,16 @@ def exp10(x):
     return np.exp(x * np.log(10))
 
 def log(x):
-    return np.log(x)/np.log(10)
+    return np.log10(x)
 
 def ln(x):
     return np.log(x)
 
 def base(x):
-    return 10**(log(x)//1)
+    return 10**(log(abs(x))//1)
+
+def rnd(x, ndig=N_DIG_ERR):
+    return round(x/base(x),ndig)
 
 def sci(x, ndig=5):
     x_base = int(log(x)//1)
@@ -221,68 +224,147 @@ def inverse(f, y0, args=(), pw=5, base=0.0):
         x0 = (x1 + x2)/2
     return round(x0, pw-1)
 
-def f_30(X, F, N, l):
-    l = min(N,l) - 1                                                  
-    c = 0.0                                                             
+def f_30(X, F, N, l, k):
+    N = np.full(l.shape, N)
+    l = np.where(l<N, l, N) - 1                                         
+    c = np.zeros(l.shape)                                                              
     b = (F[l]-F[l-1])/(X[l]-X[l-1])                        
-    a = F[l]-X[l]*b                                            
-    ll = l
-    return a, b, c, (l+1), (ll+1)
+    a = F[l]-X[l]*b                                           
+    ll = l 
+    output = [a, b, c, l, ll]
+    return output[k]
 
-def f_21(X, F, N, l, l1):
+def f_21(X, F, N, l, l1, k):
     l, l1 = l - 1, l1 - 1
-    l2 = l - 2                                                          
+    l2 = l - 2                                                       
     d = (F[l1] - F[l2]) / (X[l1] - X[l2])
     c1 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
     b1 = d - (X[l1] + X[l2]) * c1                                 
     a1 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1  
-    return a1, b1, c1, l2+1
+    output = [a1, b1, c1, l2+1]
+    return output[k]
 
-def f_25(X, F, N, l, l1):
+def f_25(X, F, N, l, l1, k):
     l, l1 = l - 1, l1 - 1
     d = (F[l]-F[l1])/(X[l]-X[l1])                          
     cf = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])   
     bf = d - (X[l] + X[l1]) * cf                                   
     af = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
-    return af, bf, cf
+    output = [af, bf, cf]
+    return output[k]
 
-def f_26(a1, b1, c1, af, bf, cf, l):
-    WT = 0.0
-    if (abs(cf)!=0.0):
-        WT = abs(cf) / (abs(cf)+abs(c1))
+def f_26(a1, b1, c1, af, bf, cf, l, k):
+    WT = np.zeros(cf.shape)
+    WT = np.where(abs(cf)!=0.0, abs(cf) / (abs(cf)+abs(c1)), WT)
     a = af + WT*(a1-af)                                            
     b = bf + WT*(b1-bf)                                            
     c = cf + WT*(c1-cf)                                            
-    ll = l  
-    return a, b, c, ll
+    ll = l
+    output = [a, b, c, ll]
+    return output[k]
+
+
 
 
 def map1(X, F, N, Y):
-    G = 0.0
-    l, ll, l1 = 2, 0, 0
+    X = np.array(X)
+    Y = np.array(Y)
+    F = np.array(F)
+    G = np.zeros(Y.shape)
+    l, ll, l1, l2 = np.full(Y.shape, 2), np.full(Y.shape, 0), np.full(Y.shape, 0), np.full(Y.shape, 0)
 
-    a, b, c = 1.0, 1.0, 1.0
-    a1, b1, c1 = 1.0, 1.0, 1.0
-    af, bf, cf = 1.0, 1.0, 1.0
+    a, b, c = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
+    a1, b1, c1 = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
+    af, bf, cf = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
 
     y = Y #Y[1]
-    
-    while not(y < X[l-1]):
-        l += 1
-        if (l > N): 
-            break
+    while np.logical_not((y < X[l-1])).all():
+        conditional = np.logical_or(np.logical_not((y < X[l-1])), np.logical_not(l>N))
+        l = np.where(conditional, l+1, l)
 
-    if (l > N) or (l == 2):
-        a, b, c, l, ll = f_30(X, F, N, l)
+    conditional_if = np.logical_or(l > N, l == 2)
+    a = np.where(conditional_if, f_30(X, F, N, l, 0), a)
+    b = np.where(conditional_if, f_30(X, F, N, l, 1), b)
+    c = np.where(conditional_if, f_30(X, F, N, l, 2), c)
+    l = np.where(conditional_if, f_30(X, F, N, l, 3), l)
+    ll = np.where(conditional_if, f_30(X, F, N, l, 4), ll)
 
-    else:
-        l1 = l - 1
-        a1, b1, c1, l2 = f_21(X, F, N, l, l1)
-        if (l != N): 
-            af, bf, cf = f_25(X, F, N, l, l1)    
-            a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)       
-        else:
-            a, b, c, ll = a1, b1, c1, l
+    conditional_else = np.logical_not(conditional_if)
+    l1 = np.where(conditional_else, l - 1, l1)
+    a1 = np.where(conditional_else, f_21(X, F, N, l, l1, 0), a1)
+    b1 = np.where(conditional_else, f_21(X, F, N, l, l1, 1), b1)
+    c1 = np.where(conditional_else, f_21(X, F, N, l, l1, 2), c1) 
+    l2 = np.where(conditional_else, f_21(X, F, N, l, l1, 3), l2)
 
-    G = a + b*y + c*y**2
+    conditional_else_if = np.logical_and(conditional_else, l != N)
+    af = np.where(conditional_else_if, f_25(X, F, N, l, l1, 0), af)  
+    bf = np.where(conditional_else_if, f_25(X, F, N, l, l1, 1), bf)   
+    cf = np.where(conditional_else_if, f_25(X, F, N, l, l1, 2), cf)  
+    a = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 0), a)
+    b = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 1), b)
+    c = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 2), c)
+    ll = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 3), ll)
+
+    conditional_else_else = np.logical_and(conditional_else, np.logical_not(l != N))
+    a = np.where(conditional_else_else, a1, a)
+    b = np.where(conditional_else_else, b1, b)
+    c = np.where(conditional_else_else, c1, c)
+    ll = np.where(conditional_else_else, l, ll)
+
+    G = a + b*y + c * y**2
     return G 
+
+# def map1(X, F, N, Y):
+#     G = 0.0
+#     l, ll, l1 = 2, 0, 0
+
+#     a, b, c = 1.0, 1.0, 1.0
+#     a1, b1, c1 = 1.0, 1.0, 1.0
+#     af, bf, cf = 1.0, 1.0, 1.0
+
+#     y = Y #Y[1]
+    
+#     X = np.array(X)
+#     Y = np.array(Y)
+#     F = np.array(F)
+#     G = np.zeros(Y.shape)
+#     l, ll, l1, l2 = np.full(Y.shape, 2), np.full(Y.shape, 0), np.full(Y.shape, 0), np.full(Y.shape, 0)
+
+#     a, b, c = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
+#     a1, b1, c1 = np.fulconditionall(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
+#     af, bf, cf = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
+
+#     while not(y < X[l-1]):
+#         l += 1
+#         if (l > N): 
+#             break
+
+#     if (l > N) or (l == 2):
+#         a = f_30(X, F, N, l, 0)
+#         b = f_30(X, F, N, l, 1)
+#         c = f_30(X, F, N, l, 2)
+#         l = f_30(X, F, N, l, 3)
+#         ll = f_30(X, F, N, l, 4)
+
+#     else:
+#         l1 = l - 1
+#         a1, b1, c1, l2 = f_21(X, F, N, l, l1)
+#         a1 = f_21(X, F, N, l, l1, 0)
+#         b1 = f_21(X, F, N, l, l1, 1)
+#         c1 = f_21(X, F, N, l, l1, 2)
+#         l2 = f_21(X, F, N, l, l1, 3)
+
+#         if (l != N):   
+#             af = f_25(X, F, N, l, l1, 0) 
+#             bf = f_25(X, F, N, l, l1, 1) 
+#             cf = f_25(X, F, N, l, l1, 2)   
+#             a = f_26(a1, b1, c1, af, bf, cf, l, 0)
+#             b = f_26(a1, b1, c1, af, bf, cf, l, 1)
+#             c = f_26(a1, b1, c1, af, bf, cf, l, 2)
+#             ll = f_26(a1, b1, c1, af, bf, cf, l, 3)
+
+#         else:
+#             a, b, c, ll = a1, b1, c1, l
+
+#     G = a + b*y + c*y**2
+#     return G 

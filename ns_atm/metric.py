@@ -24,6 +24,7 @@ def g_0_metric(R, M, chi):
 # for Neurton Star Radius
 
 def R_metric(R_eq, phi, theta, NS):
+    theta = np.where(theta < 90.0, theta, 180.0 - theta)
     chi, Omega = NS.chi, NS.Omega 
     Omega2 = Omega**2
 
@@ -34,8 +35,7 @@ def R_metric(R_eq, phi, theta, NS):
     return R_eq * (1.0 + P_0(cos(theta)) * a0 + P_2(cos(theta)) * a2 + P_4(cos(theta)) * a4)
 
 def dR_metric(R_eq, sin_th, cos_th, chi, Omega):
-    if cos_th < 0:
-        cos_th = -cos_th
+    cos_th = np.where(cos_th < 0.0, -cos_th, cos_th)
     Omega2 = Omega**2
 
     a2 = -0.39 * Omega2 + 0.29 * chi * Omega2 + 0.13 * Omega2**2
@@ -52,10 +52,12 @@ def r_u_metric(R, cos_th, q_c, b_c, R_sch):
     R_0 = R_sch / 2.0
     P2 = P_2(cos_th)
 
-    u_mid, r_mid, r_i = 0.0, 0.0, R
-    unconverged = True
+    u_mid, r_mid = np.zeros(cos_th.shape), np.zeros(cos_th.shape)
+    r_i, r_bar = np.full(cos_th.shape, R), np.zeros(cos_th.shape)
 
-    while unconverged:
+    unconverged = np.full(cos_th.shape, True)
+
+    while unconverged.all():
         r_mid = r_i
         u_mid = R_0 / r_mid
 
@@ -68,10 +70,9 @@ def r_u_metric(R, cos_th, q_c, b_c, R_sch):
         r_i = R / (exp(-nu) * B)
 
         errs = abs(r_i - r_mid) / r_i
-
-        if errs < 1e-8:
-            r_bar = r_i
-            unconverged = False 
+        
+        r_bar = np.where(errs < 1e-8, r_i, r_bar)
+        unconverged = np.where(errs < 1e-8, False, unconverged)
   
     r_bar = r_i
     u_bar =  R_0 / r_bar # (II.eq.A.5)
@@ -110,8 +111,7 @@ def beta_ph_metric(R, sin_th, omega_bar, nu):
     return beta_ph
 
 def g_metric(sin_th, cos_th, chi, Omega):
-    if cos_th < 0:
-        cos_th = -cos_th
+    cos_th = np.where(cos_th < 0.0, -cos_th, cos_th)
     Omega2 = Omega**2
 
     ce = 0.776 * chi - 0.791 # (II.eq.A.16)
@@ -181,6 +181,31 @@ def dS_metric(th, ph, R, cos_eta, Surface):
         theta_0 = Surface.get_point(th - 1, ph).theta
         theta_1 = Surface.get_point(th, ph).theta
         dcos_th = 1.0 - (abs(cos(theta_0) + cos(theta_1))) / 2.0
+
+    dS = 1 / cos_eta * R**2 * abs(dcos_th) * dphi
+    return dS
+
+
+def dS_metric_1(theta, cos_eta, R, N_ph, N_th, ph_range, th_range):
+    dcos_th = np.zeros(theta.shape)
+    if N_ph==0:
+        return dcos_th
+    
+    ph_min, ph_max = ph_range
+    th_min, th_max = th_range
+    dphi = (ph_max - ph_min) / (N_ph - 1)
+    dtheta = (th_max - th_min) / (N_th - 1)
+
+    theta_0 = theta
+    theta_p = theta + dtheta
+    theta_m = theta - dtheta
+
+    dcos_th = np.where(theta == PI/2 - dtheta/2, (cos(theta_m) + cos(theta_0)) / 2.0 , dcos_th)
+    dcos_th = np.where(theta == PI/2 + dtheta/2, (cos(theta_0) + cos(theta_p)) / 2.0, dcos_th)
+    dcos_th = np.where(theta == PI/2, (abs(cos(theta_m)) + abs(cos(theta_p))) / 2.0, dcos_th)
+    dcos_th = np.where(np.logical_and(theta > th_min, theta < th_max), (cos(theta_m) - cos(theta_p)) / 2.0, dcos_th)
+    dcos_th = np.where(theta == th_min, 1.0 - (cos(theta_0) + cos(theta_p)) / 2.0, dcos_th)
+    dcos_th = np.where(theta == th_max, 1.0 - (abs(cos(theta_0) + cos(theta_m))) / 2.0, dcos_th)
 
     dS = 1 / cos_eta * R**2 * abs(dcos_th) * dphi
     return dS

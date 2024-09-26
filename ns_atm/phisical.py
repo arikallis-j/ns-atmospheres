@@ -107,8 +107,8 @@ def m_cor(m_ns, r_ns, v_rot, define=False, m=0.0):
     return m_ns * (a_0 - a_1 / (nu_rel - 1.1) + a_2 * nu_rel**2)
 
 def E_base(N, range_E):
-    E  = [0.0]*N
-    dE = [0.0]*N
+    E  = np.array([0.0]*N)
+    dE = np.array([0.0]*N)
     E_min, E_max = range_E
     
     # Заполнение сетки энергий фотонов
@@ -214,14 +214,17 @@ def T_flux_eff(key_l, flux_NS, T_eff_NS, Flux_edd_NS):
 def wwf_tcf_T(T_c, w_b, flux_i, log_g):
     T_c_ig, w_ig = [], []
     T_g, w_g = [], []
+
     for ig in range(0,9):
         T_c_ig, w_ig = [], []
         # Внутренний цикл для заполнения T_c_ig и w_ig
         for i in range(0, N_MODEL):
             T_c_ig.append(T_c[i][ig])
             w_ig.append(w_b[i][ig])
-
+        T_c_ig = np.array(T_c_ig)
+        w_ig = np.array(w_ig)
         # Вызов функции интерполяции для T_c
+
         T_i = map1(FLUX_REL, T_c_ig, N_MODEL, flux_i)  # Предполагаем, что map1 возвращает пару значений
         T_g.append(T_i)
             
