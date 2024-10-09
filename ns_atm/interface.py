@@ -62,49 +62,45 @@ class Calculator:
     def calc(self, name):
         return f"Calculation of NeurtonStar: {name}"
     
-    def lfc(self, name="J0000+0000", sys="base", chem="s1", rel=False,
+    def lfc(self, name="J0000+0000", sys="base", chem="s001", rel=False,
                   fc_key=1, flux_key=1, w_key="null", 
-                  m_ns=1.5, r_ns=12.0, v_rot=700.0,
-                  n_phi=120, n_theta=60, n_nu=500):
-        n_phi = 120
-        n_theta = 60
-        n_nu = 500
-        N, M = 60, 500
+                  m_ns=1.5, r_ns=13.6, v_rot=700.0,
+                  N=60, M=500):
         m_ns = 1.5
         r_ns = 13.16
         v_rot = 700
         n_phi = 2*N
         n_theta = N
         n_nu = M
-        SizeA = GraphSize(x_range=(0.0,1.1), y_range=(1.3,1.9),  figsize=(10,6))
-        SizeB = GraphSize(x_range=(0.0,1.1), y_range=(0.0,0.27), figsize=(10,6))
+        SizeA = GraphSize(x_range=(0.0,1.1), y_range=(1.3,1.9),  figsize=(7,6))
+        SizeB = GraphSize(x_range=(0.0,1.1), y_range=(0.07,0.27), figsize=(7,6))
         I_arr = [0, 45, 90]
         Fkey_arr = [1, 2]
-        for k in range(2):
+        for k in range(1):
             flux_key = Fkey_arr[k]
             for i in range(3):
                 i_ang = I_arr[i]
                 W_arr, Fc_arr, L_arr = [], [], []
-                for j in range(N_MODEL):
+                for j in range(N_MODEL-1):
                     lum = FLUX_REL[j]
-                    NS = NeurtonStarNew(name=name, sys=system, chem=chem, rel=rel,
+                    NS = NeurtonStarNew(name=name, sys=sys, chem=chem, rel=rel,
                                         fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
                                         m_ns=m_ns, r_ns=r_ns, v_rot=v_rot, i_ang=i_ang, lum=lum)
 
-                    NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
+                    NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu, rng_erg=(3.0, 20.0))
                     w, fc = NS.w, NS.fc
                     W_arr.append(w)
                     Fc_arr.append(fc)
-                    L_arr.append(lum)
+                    L_arr.append(NS.lum)
                     percent = (k+1)*(i+1)*(j+1)/(2*3*N_MODEL) * 100
                     print(f"Downloading...{percent:.2f}%: {k+1} graph, {i+1} line, {j+1} ns ")
 
                 data_w = GraphData(L_arr, W_arr, tex_mode=True,
                                    ascii_label=f"i = {I_arr[i]} deg",
-                                   latex_label=f"$i = {I_arr[i]} deg$")
+                                   latex_label=f"$i = {I_arr[i]}, deg$")
                 data_fc = GraphData(L_arr, Fc_arr, tex_mode=True,
                                    ascii_label=f"i = {I_arr[i]} deg",
-                                   latex_label=f"$i = {I_arr[i]} deg$")
+                                   latex_label=f"$i = {I_arr[i]}, deg$")
                 if flux_key==1:
                     DataBaseFig8A.DB.append(data_fc)
                     DataBaseFig8B.DB.append(data_w)
@@ -121,7 +117,7 @@ class Calculator:
                 Graph_9A = Graph(DataBaseFig9A, SizeA, LegendStyle)
                 Graph_9B = Graph(DataBaseFig9B, SizeB, LegendStyle)
 
-        Graph_arr = [Graph_8A, Graph_8B, Graph_9A, Graph_9B]
+        Graph_arr = [Graph_8A, Graph_8B] #, Graph_9A, Graph_9B]
         for graph in Graph_arr:
             graph.draw_picture(save=True, draw=False) 
             graph.draw_table() 

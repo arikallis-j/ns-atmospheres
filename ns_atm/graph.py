@@ -156,14 +156,14 @@ LumPalette = GraphPalette(['black', 'red', 'blue'])
 
 BaseStyle = GraphStyle(BasePalette)
 LogStyle = GraphStyle(BasePalette, loglog=True)
-LegendStyle = GraphStyle(BasePalette, legend=True)
+LegendStyle = GraphStyle(LumPalette, legend=True)
 
 DataBaseFig8A = GraphDataBase(
     filename="Fig.8.a",
     tex_mode=True,
     latex_labels = (
-        "$F(\theta)/F_{Edd}(\theta) = const, Fig.8.a$",
-        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "$F(\\theta)/F_{Edd}(\\theta) = const, Fig.8.a$",
+        "$L(\\nu_{\\star}, i) / L_{Edd}(0)$",
         "Colour correction factor $f_c'$"
     ),
     ascii_labels = (
@@ -176,8 +176,8 @@ DataBaseFig8B = GraphDataBase(
     filename="Fig.8.b",
     tex_mode=True,
     latex_labels = (
-        "$F(\theta)/F_{Edd}(\theta) = const, Fig.8.b$",
-        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "$F(\\theta)/F_{Edd}(\\theta) = const, Fig.8.b$",
+        "$L(\\nu_{\\star}, i) / L_{Edd}(0)$",
         "Dilution factor $w'$"
     ),
     ascii_labels = (
@@ -190,8 +190,8 @@ DataBaseFig9A = GraphDataBase(
     filename="Fig.9.a",
     tex_mode=True,
     latex_labels = (
-        "$F(\theta) = const, Fig.9.a$",
-        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "$F(\\theta) = const, Fig.9.a$",
+        "$L(\nu_{\\star}, i) / L_{Edd}(0)$",
         "Colour correction factor $f_c'$"
     ),
     ascii_labels = (
@@ -204,8 +204,8 @@ DataBaseFig9B = GraphDataBase(
     filename="Fig.9.b",
     tex_mode=True,
     latex_labels = (
-        "$F(\theta) = const, Fig.9.b$",
-        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "$F(\\theta) = const, Fig.9.b$",
+        "$L(\nu_{\\star}, i) / L_{Edd}(0)$",
         "Dilution factor $w'$"
     ),
     ascii_labels = (
