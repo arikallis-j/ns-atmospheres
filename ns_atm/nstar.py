@@ -25,8 +25,8 @@ class NS_SurfaceNew(Surface):
         # - после использования -- c self
         self.phi_init = np.full((N_th, N_ph), np.linspace(*ph_range, N_ph)).T
         self.theta_init = np.full((N_ph, N_th), np.linspace(*th_range, N_th))
-
-        self.r_init = self.r_func(self.r_0, self.phi_init, self.theta_init, self.NS)
+        theta_sym = np.where(self.theta_init < 90.0, self.theta_init, 180.0 - self.theta_init) * RAD
+        self.r_init = self.r_func(self.r_0, self.phi_init, theta_sym , self.NS)
         self.phi = self.phi_init * RAD
         self.theta = self.theta_init * RAD
         self.R = self.r_init * KM
@@ -65,10 +65,8 @@ class NS_SurfaceNew(Surface):
         
         # # radiational
         self.Flux_edd_real = Flux_edd(self.grv, self.NS.sigma_T)
-        self.flux, self.T_eff = T_flux_eff(self.NS.flux_key, self.NS.flux, self.NS.T_eff, self.Flux_edd_real)
-        self.wwf_T, self.tcf_T = wwf_tcf_T(self.NS.T_c, self.NS.w_b, self.flux, self.log_g)
-        
-
+        self.flux, self.T_eff, self.N_model = T_flux_eff(self.NS.flux_key, self.NS.flux, self.NS.T_eff, self.Flux_edd_real, N_MODEL)
+        self.wwf_T, self.tcf_T = wwf_tcf_T(self.NS.T_c, self.NS.w_b, self.flux, self.log_g, self.N_model)
         # spectra 
         E, dE = E_base(N_nu, nu_range)
         self.E = np.full((N_ph, N_th, N_nu), np.array(E))
@@ -110,7 +108,7 @@ class NS_SurfaceNew(Surface):
         self.surf /= l_phi
         self.R_pr = sqrt(self.surf)
 
-        self.Lum = np.sum(self.B_real*self.dE)
+        self.Lum = np.sum(self.B_real*self.dE[0,0,:])
 
         self.lum = 4.0 * PI * self.Lum / self.NS.Lum_obs
 

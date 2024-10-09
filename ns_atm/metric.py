@@ -24,7 +24,6 @@ def g_0_metric(R, M, chi):
 # for Neurton Star Radius
 
 def R_metric(R_eq, phi, theta, NS):
-    theta = np.where(theta < 90.0, theta, 180.0 - theta)
     chi, Omega = NS.chi, NS.Omega 
     Omega2 = Omega**2
 
@@ -48,16 +47,15 @@ def u_metric(R_theta, R_sch):
 
 # for Neurton Star Point
 
-def r_u_metric(R, cos_th, q_c, b_c, R_sch):
+def r_u_metric(R, cos_th, q_c, b_c, R_sch, err=1e-8):
     R_0 = R_sch / 2.0
     P2 = P_2(cos_th)
 
     u_mid, r_mid = np.zeros(cos_th.shape), np.zeros(cos_th.shape)
     r_i, r_bar = np.full(cos_th.shape, R), np.zeros(cos_th.shape)
 
-    unconverged = np.full(cos_th.shape, True)
-
-    while unconverged.all():
+    converged = np.full(cos_th.shape, False)
+    while np.logical_not(converged.all()):
         r_mid = r_i
         u_mid = R_0 / r_mid
 
@@ -70,10 +68,8 @@ def r_u_metric(R, cos_th, q_c, b_c, R_sch):
         r_i = R / (exp(-nu) * B)
 
         errs = abs(r_i - r_mid) / r_i
-        
-        r_bar = np.where(errs < 1e-8, r_i, r_bar)
-        unconverged = np.where(errs < 1e-8, False, unconverged)
-  
+        r_bar = np.where(np.logical_and(errs < err, np.logical_not(converged)), r_i, r_bar)
+        converged = np.where(errs < err, True, converged)
     r_bar = r_i
     u_bar =  R_0 / r_bar # (II.eq.A.5)
    

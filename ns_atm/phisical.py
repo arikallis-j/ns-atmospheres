@@ -195,46 +195,51 @@ def T_c(chem, fc_key):
 
     return T_c
 
-def T_flux_eff(key_l, flux_NS, T_eff_NS, Flux_edd_NS):
+def T_flux_eff(key_l, flux_NS, T_eff_NS, Flux_edd_NS, N_model):
     if key_l == 1:
         T_eff = T_SB(flux_NS * Flux_edd_NS)
-        flux = flux_NS
+        flux = flux_NS# np.full(Flux_edd_NS.shape,flux_NS)#(2,2),flux_NS)
     else:
         T_eff = T_eff_NS 
         flux = Flux_SB(T_eff) / Flux_edd_NS
-        if flux_NS >= FLUX_REL[N_MODEL-1]:
-            # N_l = iif - 1
+        if (flux >= FLUX_REL[N_model-1]).any():
+            N_model -= 1
             print(f"""incorrectly flux
             flux_i  = {flux_NS}
-            flux_rel[N_l] = {FLUX_REL[N_MODEL-1]})
-            flux_i ≥ flux_rel[N_l] = {flux_NS}≥{FLUX_REL[N_MODEL-1]}) = true
+            flux_rel[N_l] = {FLUX_REL[N_model-1]})
+            flux_i ≥ flux_rel[N_l] = {flux_NS}≥{FLUX_REL[N_model-1]}) = true
             """)
-    return flux, T_eff
+    return flux, T_eff, N_model
 
-def wwf_tcf_T(T_c, w_b, flux_i, log_g):
-    T_c_ig, w_ig = [], []
-    T_g, w_g = [], []
-
-    for ig in range(0,9):
-        T_c_ig, w_ig = [], []
-        # Внутренний цикл для заполнения T_c_ig и w_ig
-        for i in range(0, N_MODEL):
-            T_c_ig.append(T_c[i][ig])
-            w_ig.append(w_b[i][ig])
-        T_c_ig = np.array(T_c_ig)
-        w_ig = np.array(w_ig)
-        # Вызов функции интерполяции для T_c
-
-        T_i = map1(FLUX_REL, T_c_ig, N_MODEL, flux_i)  # Предполагаем, что map1 возвращает пару значений
-        T_g.append(T_i)
-            
-        # Вызов функции интерполяции для w
-        w_i = map1(FLUX_REL, w_ig, N_MODEL, flux_i)  # Аналогичное предположение для вывода функции map1
-        w_g.append(w_i)
-
-    T_f = map1(LOG_G,T_g,9,log_g)
-    w_f = map1(LOG_G,w_g,9,log_g)  
-        
+def wwf_tcf_T(T_c, w_b, flux_i, log_g, N_model):
+    T_c = np.array(T_c)
+    w_b = np.array(w_b)
+    flux_i = np.array(flux_i)
+    # print(np.array(FLUX_REL).shape, T_c.shape, N_model, flux_i.shape)
+    # Вызов функции интерполяции для T_c
+    size = np.size(flux_i)
+    if size==1:
+        N, M = 1, 1
+        Flux = np.full((1,1), flux_i)
+    else:
+        N, M = flux_i.shape
+        Flux = np.full((1,1), flux_i)
+    T_g = map1(FLUX_REL, T_c, N_model, flux_i)  # Предполагаем, что map1 возвращает пару значений      
+    # Вызов функции интерполяции для w
+    w_g = map1(FLUX_REL, w_b, N_model, flux_i)  # Аналогичное предположение для вывода функции map1\
+    # print(T_g.shape)
+    T_g = np.squeeze(T_g)
+    w_g = np.squeeze(w_g)
+    # print(T_g.shape)
+    # T_g = T_g.reshape(T_g.shape[0]*T_g.shape[1],T_g.shape[2]).T
+    # w_g = w_g.reshape(w_g.shape[0]*w_g.shape[1],w_g.shape[2]).T
+    # print(np.array(LOG_G).shape, T_g.shape, 9, log_g.shape)
+    T_f = map1(LOG_G, T_g, 9, log_g)
+    w_f = map1(LOG_G, w_g, 9, log_g) 
+    # print(T_f)
+    T_f = T_f.reshape(log_g.shape)
+    w_f = w_f.reshape(log_g.shape)
+    # print(w_f.shape)
     wwf_T = w_f
     tcf_T = T_f
     return wwf_T, tcf_T

@@ -36,7 +36,7 @@ class GraphData:
 
 class GraphDataBase:
     def __init__(self, filename = "graph", tex_mode=False, ascii_labels = ("Title", "X", "Y"), latex_labels = ("$Title$", "$X$", "$Y$")):
-        self.DataBase = []
+        self.DB = []
 
         self.filename = filename
         self.title_ascii= ascii_labels[0]
@@ -53,13 +53,13 @@ class GraphDataBase:
             self.y_latex = ascii_labels[2]
         
     def __len__(self):
-        return len(self.DataBase)
+        return len(self.DB)
         
-    def __getitem__(self, index): # take DataBase[k]
-        return self.DataBase[index]
+    def __getitem__(self, index): # take DB[k]
+        return self.DB[index]
     
-    def __iter__(self): # take list(DataBase)
-        return iter(self.DataBase)
+    def __iter__(self): # take list(DB)
+        return iter(self.DB)
 
 class GraphSize:
     def __init__(self, figsize = (10, 10), x_range = None, y_range = None):
@@ -150,3 +150,67 @@ class Graph:
         console.print('')
         console.print(table)
 
+BasePalette = GraphPalette(['red', 'blue', 'green'])
+LinePalette = GraphPalette(['black', 'orange', 'violet', 'green', 'blue', 'red'])
+LumPalette = GraphPalette(['black', 'red', 'blue'])
+
+BaseStyle = GraphStyle(BasePalette)
+LogStyle = GraphStyle(BasePalette, loglog=True)
+LegendStyle = GraphStyle(BasePalette, legend=True)
+
+DataBaseFig8A = GraphDataBase(
+    filename="Fig.8.a",
+    tex_mode=True,
+    latex_labels = (
+        "$F(\theta)/F_{Edd}(\theta) = const, Fig.8.a$",
+        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "Colour correction factor $f_c'$"
+    ),
+    ascii_labels = (
+        "F(theta)/F_Edd(theta) = const, Fig.8.a",
+        "L(nu_cr, i) / L_Edd(0)",
+        "Colour correction factor f_c"
+    ),
+)
+DataBaseFig8B = GraphDataBase(
+    filename="Fig.8.b",
+    tex_mode=True,
+    latex_labels = (
+        "$F(\theta)/F_{Edd}(\theta) = const, Fig.8.b$",
+        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "Dilution factor $w'$"
+    ),
+    ascii_labels = (
+        "F(theta)/F_Edd(theta) = const, Fig.8.b",
+        "L(nu_cr, i) / L_Edd(0)",
+        "Dilution factor w"
+    ),
+)
+DataBaseFig9A = GraphDataBase(
+    filename="Fig.9.a",
+    tex_mode=True,
+    latex_labels = (
+        "$F(\theta) = const, Fig.9.a$",
+        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "Colour correction factor $f_c'$"
+    ),
+    ascii_labels = (
+        "F(theta) = const, Fig.9.a",
+        "L(nu_cr, i) / L_Edd(0)",
+        "Colour correction factor f_c"
+    ),
+)
+DataBaseFig9B = GraphDataBase(
+    filename="Fig.9.b",
+    tex_mode=True,
+    latex_labels = (
+        "$F(\theta) = const, Fig.9.b$",
+        "$L(\nu_*, i) / L_{Edd}(0)$",
+        "Dilution factor $w'$"
+    ),
+    ascii_labels = (
+        "F(theta) = const, Fig.9.b",
+        "L(nu_cr, i) / L_Edd(0)",
+        "Dilution factor w"
+    ),
+)

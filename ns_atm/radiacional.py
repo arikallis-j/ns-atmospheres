@@ -34,55 +34,21 @@ def B_Omega_rad(I_e, kappa_E):
     B_Omega = kappa_E**3 * I_e
     return B_Omega
 
-def w_fc_rad(surf_0, θ_eff_0, E, B_real):
+
+def w_fc_rad(surf_0, th_eff_0, E, B_real):
     w_min, w_max = 0.01, 1.05
     fc_min, fc_max = 1.0e-1, 3.0
     N_w, N_fc, N_f = 100, 100, len(E)
-        
-    itr = 0
-    while not(itr>4):
-        contsum = 1.e50
-        dw = (w_max - w_min) / N_w
-        dfc = (fc_max - fc_min) / N_fc    
-
-        itr += 1
-
-        for i in range(N_w):
-            w_real = w_min + dw*i
-            for j in range(N_fc):
-                fc_real = fc_min + dfc*j
-                cont = 0.0
-                for nu in range(N_f):
-                    if (E[nu]>3.0 and E[nu]<20.0):
-                        rho_f = rho_rad(E[nu], fc_real*θ_eff_0)
-                        fc_nu = w_real * PI * rho_f / E[nu]
-                        cont += (fc_nu - B_real[nu] / surf_0 / E[nu])**2
-                if (cont<contsum):
-                    fc = fc_real
-                    w = w_real
-                    contsum = cont
-
-        w_min = w - 2.0 * dw
-        w_max = w + 2.0 * dw
-        fc_min = fc - 2.0 * dfc
-        fc_max = fc + 2.0 * dfc
-
-    return w, fc
-
-def w_fc_rad(surf_0, θ_eff_0, E, B_real):
-    w_min, w_max = 0.01, 1.05
-    fc_min, fc_max = 1.0e-1, 3.0
-    N_w, N_fc, N_f = 10, 20, len(E)
     fc, w = 0.0, 0.0
-    itr = 0
+    itr = 1
 
-    while not(itr>4):
+    while not(itr>5):
         dw = (w_max - w_min) / N_w
         dfc = (fc_max - fc_min) / N_fc    
 
-        rho_f = np.zeros((N_fc, N_w, *E.shape))
-        E_wfc = np.full((N_fc, N_w, *E.shape), E)
-        B_wfc = np.full((N_fc, N_w, *B_real.shape), B_real)
+        rho_f = np.zeros(*E.shape)
+        E_wfc = np.full(*E.shape, E)
+        B_wfc = np.full(*B_real.shape, B_real)
 
         w_real = np.linspace(w_min, w_max - dw, N_w)
         w_real = np.full((N_fc, N_w), w_real).T
@@ -95,7 +61,7 @@ def w_fc_rad(surf_0, θ_eff_0, E, B_real):
         cont = np.zeros((N_w, N_fc))
 
         condicional_E = np.logical_and(E_wfc>3.0, E_wfc<20.0)
-        rho_f = np.where(condicional_E, rho_rad(E_wfc, fc_real*θ_eff_0), np.zeros(E_wfc.shape))
+        rho_f = np.where(condicional_E, rho_rad(E_wfc, fc_real*th_eff_0), np.zeros(E_wfc.shape))
         fc_nu = np.where(condicional_E, w_real * PI * rho_f / E_wfc, np.zeros(E.shape))
         cont = np.sum(np.where(condicional_E, (fc_nu - B_wfc / surf_0 / E_wfc)**2, np.zeros(E_wfc.shape)), axis=2)
         fc_real = fc_real[:,:,0]

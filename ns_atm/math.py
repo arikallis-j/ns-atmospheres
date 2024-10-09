@@ -224,95 +224,785 @@ def inverse(f, y0, args=(), pw=5, base=0.0):
         x0 = (x1 + x2)/2
     return round(x0, pw-1)
 
-def f_30(X, F, N, l, k):
-    N = np.full(l.shape, N)
-    l = np.where(l<N, l, N) - 1                                         
-    c = np.zeros(l.shape)                                                              
-    b = (F[l]-F[l-1])/(X[l]-X[l-1])                        
-    a = F[l]-X[l]*b                                           
-    ll = l 
-    output = [a, b, c, l, ll]
-    return output[k]
-
-def f_21(X, F, N, l, l1, k):
-    l, l1 = l - 1, l1 - 1
-    l2 = l - 2                                                       
-    d = (F[l1] - F[l2]) / (X[l1] - X[l2])
-    c1 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
-    b1 = d - (X[l1] + X[l2]) * c1                                 
-    a1 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1  
-    output = [a1, b1, c1, l2+1]
-    return output[k]
-
-def f_25(X, F, N, l, l1, k):
-    l, l1 = l - 1, l1 - 1
-    d = (F[l]-F[l1])/(X[l]-X[l1])                          
-    cf = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])   
-    bf = d - (X[l] + X[l1]) * cf                                   
-    af = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
-    output = [af, bf, cf]
-    return output[k]
-
-def f_26(a1, b1, c1, af, bf, cf, l, k):
-    WT = np.zeros(cf.shape)
-    WT = np.where(abs(cf)!=0.0, abs(cf) / (abs(cf)+abs(c1)), WT)
-    a = af + WT*(a1-af)                                            
-    b = bf + WT*(b1-bf)                                            
-    c = cf + WT*(c1-cf)                                            
-    ll = l
-    output = [a, b, c, ll]
-    return output[k]
-
-
-
-
-def map1(X, F, N, Y):
+def map1(X, F, M, Y):  
     X = np.array(X)
     Y = np.array(Y)
+    Y = Y.reshape(np.size(Y))
+
     F = np.array(F)
     G = np.zeros(Y.shape)
-    l, ll, l1, l2 = np.full(Y.shape, 2), np.full(Y.shape, 0), np.full(Y.shape, 0), np.full(Y.shape, 0)
+    G_full = np.full(Y.shape, False)
 
-    a, b, c = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
-    a1, b1, c1 = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
-    af, bf, cf = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
 
-    y = Y #Y[1]
-    while np.logical_not((y < X[l-1])).all():
-        conditional = np.logical_or(np.logical_not((y < X[l-1])), np.logical_not(l>N))
-        l = np.where(conditional, l+1, l)
+    N = np.full(Y.shape, M) - 1
+    l, ll, l1, l2 = np.full(Y.shape, 1), np.full(Y.shape, -1), np.full(Y.shape, 0), np.full(Y.shape, 0)
+    
+    a, b, c, d = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
+    a1, b1, c1 = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
+    af, bf, cf = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
 
-    conditional_if = np.logical_or(l > N, l == 2)
-    a = np.where(conditional_if, f_30(X, F, N, l, 0), a)
-    b = np.where(conditional_if, f_30(X, F, N, l, 1), b)
-    c = np.where(conditional_if, f_30(X, F, N, l, 2), c)
-    l = np.where(conditional_if, f_30(X, F, N, l, 3), l)
-    ll = np.where(conditional_if, f_30(X, F, N, l, 4), ll)
+    flag_30 = np.full(Y.shape, False)
 
-    conditional_else = np.logical_not(conditional_if)
-    l1 = np.where(conditional_else, l - 1, l1)
-    a1 = np.where(conditional_else, f_21(X, F, N, l, l1, 0), a1)
-    b1 = np.where(conditional_else, f_21(X, F, N, l, l1, 1), b1)
-    c1 = np.where(conditional_else, f_21(X, F, N, l, l1, 2), c1) 
-    l2 = np.where(conditional_else, f_21(X, F, N, l, l1, 3), l2)
+    cycle_flag = np.logical_not(Y < X[l])
+    while cycle_flag.any():
+        l = np.where(cycle_flag, l+1, l)
+        flag_30 =  np.where(l > N, True, flag_30)
+        cycle_flag = np.logical_not(Y < X[l])
+        cycle_flag = np.where(l >= N, False, cycle_flag)
 
-    conditional_else_if = np.logical_and(conditional_else, l != N)
-    af = np.where(conditional_else_if, f_25(X, F, N, l, l1, 0), af)  
-    bf = np.where(conditional_else_if, f_25(X, F, N, l, l1, 1), bf)   
-    cf = np.where(conditional_else_if, f_25(X, F, N, l, l1, 2), cf)  
-    a = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 0), a)
-    b = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 1), b)
-    c = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 2), c)
-    ll = np.where(conditional_else_if, f_26(a1, b1, c1, af, bf, cf, l, 3), ll)
+    flag_31 = np.logical_not(l==ll)
+    flag_3031 = np.logical_and(flag_30, flag_31)
+    # flag 30
+    l_3031 = np.where(l < N, l, N) 
+    l = np.where(flag_3031, l_3031, l)
+    
+    flag = flag_3031
+    
+    c_3031 = np.zeros(c.shape) 
+    c = np.where(flag, c_3031, c)
 
-    conditional_else_else = np.logical_and(conditional_else, np.logical_not(l != N))
-    a = np.where(conditional_else_else, a1, a)
-    b = np.where(conditional_else_else, b1, b)
-    c = np.where(conditional_else_else, c1, c)
-    ll = np.where(conditional_else_else, l, ll)
+    b_3031 = (F[l]-F[l-1])/(X[l]-X[l-1])
 
-    G = a + b*y + c * y**2
-    return G 
+    b = np.where(flag, b_3031, b)
+
+    a_3031 = F[l]-X[l]*b 
+    a = np.where(flag, a_3031, a)
+
+    ll_3031 = l
+    ll = np.where(flag_3031, ll_3031, ll)
+
+    # flag 50
+    flag = flag_30
+
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    flag_20 = np.logical_not(l==ll)
+    flag_21 = l==1
+    flag_2021 = np.logical_and(flag_20, flag_21)
+    flag_31 = np.logical_not(l==ll)
+    flag_202131 = np.logical_and(flag_2021, flag_31)
+
+    # flag 30
+    l_202131 = np.where(l < N, l, N) 
+    l = np.where(flag_202131, l_202131, l) 
+
+    flag = flag_202131
+
+    c_202131 = np.zeros(c.shape)  
+    c = np.where(flag, c_202131, c)
+
+    b_202131 = (F[l]-F[l-1])/(X[l]-X[l-1])
+    b = np.where(flag, b_202131, b)
+
+    a_202131 = F[l]-X[l]*b 
+    a = np.where(flag, a_202131, a)
+
+    ll_202131 = l
+    ll = np.where(flag_202131, ll_202131, ll)
+
+    # flag 50l
+    flag = flag_2021
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    # # #  
+    flag_m21 = np.logical_not(flag_21)
+    flag_20m21 = np.logical_and(flag_20, flag_m21)
+    flag_311 = np.logical_or((l > (ll + 1)), l==2)
+    flag_20m2131 = np.logical_and(flag_20m21, flag_311)
+
+    # flag 31
+    l1_20m2131 = l - 1
+    l1 = np.where(flag_20m2131, l1_20m2131, l1)
+
+    l2_20m2131 = l - 2
+    l2 = np.where(flag_20m2131, l2_20m2131, l2)
+
+    flag = flag_20m2131
+    d_20m2131 = (F[l1] - F[l2]) / (X[l1] - X[l2])
+    d = np.where(flag, d_20m2131, d)
+
+    c1_20m2131 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
+    c1 = np.where(flag, c1_20m2131, c1)
+
+    b1_20m2131 = d - (X[l1] + X[l2]) * c1                                 
+    b1 = np.where(flag, b1_20m2131, b1)
+
+    a1_20m2131 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1 
+    a1 = np.where(flag, a1_20m2131, a1)
+
+    # flag_42
+    flag_42 = np.logical_not(l < N)
+    flag_20m213142 = np.logical_and(flag_20m2131, flag_42)
+    flag = flag_20m213142
+
+    c = np.where(flag, c1, c)                                                      
+    b = np.where(flag, b1, b)                                                         
+    a = np.where(flag, a1, a)                                                          
+    ll= np.where(flag_20m213142, l, ll)      
+
+    # flag 50
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    # flag 25
+    flag = flag_20m2131
+
+    d_20m2131 = (F[l]-F[l1])/(X[l]-X[l1])  
+    d = np.where(flag, d_20m2131, d)
+    cf_20m2131 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+    cf = np.where(flag, cf_20m2131, cf)
+    
+    bf_20m2131 = d - (X[l] + X[l1]) * cf                                   
+    bf = np.where(flag, bf_20m2131, bf)
+    
+    af_20m2131 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+    af = np.where(flag, af_20m2131, af)
+
+    # flag 26
+    eps = 1e-15
+    WT = np.zeros(cf.shape)
+    WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+    a_20m2131 = af + WT*(a1-af)  
+    a = np.where(flag, a_20m2131, a)
+
+    b_20m2131 = bf + WT*(b1-bf) 
+    b = np.where(flag, b_20m2131, b) 
+
+    c_20m2131 = cf + WT*(c1-cf) 
+    c = np.where(flag, c_20m2131, c) 
+
+    ll = np.where(flag_20m2131, l, ll) 
+
+    # flag 50
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    flag_m31 = np.logical_not(flag_31)
+    flag_20m21m31 = np.logical_and(flag_20m21, flag_m31)
+    flag_42 = (l==N)
+    flag_20m21m3142 = np.logical_and(flag_20m21m31, flag_42)
+    flag = flag_20m21m3142
+    
+    c = np.where(flag, c1, c)                                                      
+    b = np.where(flag, b1, b)                                                         
+    a = np.where(flag, a1, a)                                                          
+    ll = np.where(flag, l, ll)  
+
+    # flag 50
+    flag = flag_20m213142
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    flag_m42 = np.logical_not(flag_42)
+    flag_20m21m31m42 = np.logical_and(flag_20m21m31, flag_m42)
+
+    l1_20m21m31m42 = l - 1
+    l1 = np.where(flag_20m21m31m42, l1_20m21m31m42, l1)
+
+    flag = flag_20m21m31m42
+
+    c1 = np.where(flag, cf, c1)                                                      
+    b1 = np.where(flag, bf, b1)                                                         
+    a1 = np.where(flag, af, a1)   
+
+    # flag 25
+    L = np.max(l)
+    d_20m21m31m42 = (F[l]-F[l1])/(X[l]-X[l1])  
+    d = np.where(flag, d_20m21m31m42, d)
+
+    cf_20m21m31m42 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+    cf = np.where(flag, cf_20m21m31m42, cf)
+    
+    bf_20m21m31m42 = d - (X[l] + X[l1]) * cf                                   
+    bf = np.where(flag, bf_20m21m31m42, bf)
+    
+    af_20m21m31m42 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+    af = np.where(flag, af_20m21m31m42, af)
+
+    # flag 26
+    eps = 1e-15
+    WT = np.zeros(cf.shape)
+    WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+    a_20m21m31m42 = af + WT*(a1-af)  
+    a = np.where(flag, a_20m21m31m42, a)
+
+    b_20m21m31m42 = bf + WT*(b1-bf) 
+    b = np.where(flag, b_20m21m31m42, b) 
+
+    c_20m21m31m42 = cf + WT*(c1-cf) 
+    c = np.where(flag, c_20m21m31m42, c) 
+
+    ll = np.where(flag, l, ll) 
+
+    # flag 50
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    flag_m20 = np.logical_not(flag_20) 
+    flag = flag_m20
+
+    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+    G_full = np.where(flag, True, G_full)
+    if G_full.all():
+        return G
+
+    return G
+
+
+# def map1(X, F, M, Y):  
+#     F = np.array(F)
+#     X0 = np.array(X)
+#     X = np.full(F.T.shape, X0).T
+#     U_shape = Y.shape
+#     Y = Y.reshape(Y.shape[0]*Y.shape[1],)
+#     Y1 = np.full((F.T.shape[0], *Y.shape), Y).T
+
+#     print(X.shape)
+#     print(F.shape)
+#     print(Y.shape)
+
+#     G = np.zeros(Y1.shape)
+#     G_full = np.full(Y1.shape, False)
+#     l, ll, l1, l2 = np.full(Y.shape, 1), np.full(Y.shape, -1), np.full(Y.shape, 0), np.full(Y.shape,0)
+#     print(l.shape)
+#     print(f"F[l] {F[l].shape}")
+#     print(f"X[l] {X[l].shape}")
+#     print(f"F[l] - X[l] {(F[l] - X[l]).shape}")
+       
+#     N = np.full(Y.shape, M) - 1
+
+#     a, b, c, d = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+#     a1, b1, c1 = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+#     af, bf, cf = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+
+#     flag_30 = np.full(Y.shape, False)
+
+#     cycle_flag = np.logical_not(Y < X[l][:,0])
+#     while cycle_flag.any():
+#         l = np.where(cycle_flag, l+1, l)
+#         flag_30 =  np.where(l > N, True, flag_30)
+#         cycle_flag = np.logical_not(Y < X[l][:,0])
+#         cycle_flag = np.where(l >= N, False, cycle_flag)
+
+#     flag_31 = np.logical_not(l==ll)
+#     flag_3031 = np.logical_and(flag_30, flag_31)
+#     # flag 30
+#     l_3031 = np.where(l < N, l, N) 
+#     l = np.where(flag_3031, l_3031, l)
+    
+#     flag = np.full((F.T.shape[0], *flag_3031.shape), flag_3031).T
+    
+#     c_3031 = np.zeros(c.shape) 
+#     c = np.where(flag, c_3031, c)
+
+#     b_3031 = (F[l]-F[l-1])/(X[l]-X[l-1])
+
+#     b = np.where(flag, b_3031, b)
+
+#     a_3031 = F[l]-X[l]*b 
+#     a = np.where(flag, a_3031, a)
+
+#     ll_3031 = l
+#     ll = np.where(flag_3031, ll_3031, ll)
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_30.shape), flag_30).T 
+
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_20 = np.logical_not(l==ll)
+#     flag_21 = l==1
+#     flag_2021 = np.logical_and(flag_20, flag_21)
+#     flag_31 = np.logical_not(l==ll)
+#     flag_202131 = np.logical_and(flag_2021, flag_31)
+
+#     # flag 30
+#     l_202131 = np.where(l < N, l, N) 
+#     l = np.where(flag_202131, l_202131, l) 
+
+#     flag = np.full((F.T.shape[0], *flag_202131.shape), flag_202131).T 
+
+#     c_202131 = np.zeros(c.shape)  
+#     c = np.where(flag, c_202131, c)
+
+#     b_202131 = (F[l]-F[l-1])/(X[l]-X[l-1])
+#     b = np.where(flag, b_202131, b)
+
+#     a_202131 = F[l]-X[l]*b 
+#     a = np.where(flag, a_202131, a)
+
+#     ll_202131 = l
+#     ll = np.where(flag_202131, ll_202131, ll)
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_2021.shape), flag_2021).T 
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     # # #  
+#     flag_m21 = np.logical_not(flag_21)
+#     flag_20m21 = np.logical_and(flag_20, flag_m21)
+#     flag_311 = np.logical_or((l > (ll + 1)), l==2)
+#     flag_20m2131 = np.logical_and(flag_20m21, flag_311)
+
+#     # flag 31
+#     l1_20m2131 = l - 1
+#     l1 = np.where(flag_20m2131, l1_20m2131, l1)
+
+#     l2_20m2131 = l - 2
+#     l2 = np.where(flag_20m2131, l2_20m2131, l2)
+
+#     flag = np.full((F.T.shape[0], *flag_20m2131.shape), flag_20m2131).T 
+#     d_20m2131 = (F[l1] - F[l2]) / (X[l1] - X[l2])
+#     d = np.where(flag, d_20m2131, d)
+
+#     c1_20m2131 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
+#     c1 = np.where(flag, c1_20m2131, c1)
+
+#     b1_20m2131 = d - (X[l1] + X[l2]) * c1                                 
+#     b1 = np.where(flag, b1_20m2131, b1)
+
+#     a1_20m2131 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1 
+#     a1 = np.where(flag, a1_20m2131, a1)
+
+#     # flag_42
+#     flag_42 = np.logical_not(l < N)
+#     flag_20m213142 = np.logical_and(flag_20m2131, flag_42)
+#     flag = np.full((F.T.shape[0], *flag_20m213142.shape), flag_20m213142).T 
+
+#     c = np.where(flag, c1, c)                                                      
+#     b = np.where(flag, b1, b)                                                         
+#     a = np.where(flag, a1, a)                                                          
+#     ll= np.where(flag_20m213142, l, ll)      
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     # flag 25
+#     flag = np.full((F.T.shape[0], *flag_20m2131.shape), flag_20m2131).T 
+
+#     d_20m2131 = (F[l]-F[l1])/(X[l]-X[l1])  
+#     d = np.where(flag, d_20m2131, d)
+#     cf_20m2131 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+#     cf = np.where(flag, cf_20m2131, cf)
+    
+#     bf_20m2131 = d - (X[l] + X[l1]) * cf                                   
+#     bf = np.where(flag, bf_20m2131, bf)
+    
+#     af_20m2131 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+#     af = np.where(flag, af_20m2131, af)
+
+#     # flag 26
+#     eps = 1e-15
+#     WT = np.zeros(cf.shape)
+#     WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+#     a_20m2131 = af + WT*(a1-af)  
+#     a = np.where(flag, a_20m2131, a)
+
+#     b_20m2131 = bf + WT*(b1-bf) 
+#     b = np.where(flag, b_20m2131, b) 
+
+#     c_20m2131 = cf + WT*(c1-cf) 
+#     c = np.where(flag, c_20m2131, c) 
+
+#     ll = np.where(flag_20m2131, l, ll) 
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m31 = np.logical_not(flag_31)
+#     flag_20m21m31 = np.logical_and(flag_20m21, flag_m31)
+#     flag_42 = (l==N)
+#     flag_20m21m3142 = np.logical_and(flag_20m21m31, flag_42)
+#     flag = np.full((F.T.shape[0], *flag_20m21m3142.shape), flag_20m21m3142).T 
+    
+#     c = np.where(flag, c1, c)                                                      
+#     b = np.where(flag, b1, b)                                                         
+#     a = np.where(flag, a1, a)                                                          
+#     ll = np.where(flag, l, ll)  
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_20m213142.shape), flag_20m213142).T 
+#     G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m42 = np.logical_not(flag_42)
+#     flag_20m21m31m42 = np.logical_and(flag_20m21m31, flag_m42)
+
+#     l1_20m21m31m42 = l - 1
+#     l1 = np.where(flag_20m21m31m42, l1_20m21m31m42, l1)
+
+#     flag = np.full((F.T.shape[0], *flag_20m21m31m42.shape), flag_20m21m31m42).T
+
+#     c1 = np.where(flag, cf, c1)                                                      
+#     b1 = np.where(flag, bf, b1)                                                         
+#     a1 = np.where(flag, af, a1)   
+
+#     # flag 25
+#     L = np.max(l)
+#     d_20m21m31m42 = (F[l]-F[l1])/(X[l]-X[l1])  
+#     d = np.where(flag, d_20m21m31m42, d)
+
+#     cf_20m21m31m42 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+#     cf = np.where(flag, cf_20m21m31m42, cf)
+    
+#     bf_20m21m31m42 = d - (X[l] + X[l1]) * cf                                   
+#     bf = np.where(flag, bf_20m21m31m42, bf)
+    
+#     af_20m21m31m42 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+#     af = np.where(flag, af_20m21m31m42, af)
+
+#     # flag 26
+#     eps = 1e-15
+#     WT = np.zeros(cf.shape)
+#     WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+#     a_20m21m31m42 = af + WT*(a1-af)  
+#     a = np.where(flag, a_20m21m31m42, a)
+
+#     b_20m21m31m42 = bf + WT*(b1-bf) 
+#     b = np.where(flag, b_20m21m31m42, b) 
+
+#     c_20m21m31m42 = cf + WT*(c1-cf) 
+#     c = np.where(flag, c_20m21m31m42, c) 
+
+#     ll = np.where(flag, l, ll) 
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)  
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m20 = np.logical_not(flag_20) 
+#     flag = np.full((F.T.shape[0], *flag_m20.shape), flag_m20).T
+
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     return G.reshape(*U_shape, G.shape[1]) 
+
+
+# def map2(X, F, M, Y):  
+#     F = np.array(F)
+#     X0 = np.array(X)
+#     X = np.full(F.T.shape, X0).T
+#     U_shape = Y.shape
+#     Y = Y.reshape(Y.shape[0]*Y.shape[1],)
+#     Y1 = np.full((F.T.shape[0], *Y.shape), Y).T
+
+#     print(X.shape)
+#     print(F.shape)
+#     print(Y.shape)
+#     print(Y1.shape)
+
+#     G = np.zeros(Y1.shape)
+#     G_full = np.full(Y1.shape, False)
+#     l, ll, l1, l2 = np.full(Y.shape, 1), np.full(Y.shape, -1), np.full(Y.shape, 0), np.full(Y.shape,0)
+#     print(l.shape)
+#     print(f"F[l] {F[l].shape}")
+#     print(f"X[l] {X[l].shape}")
+#     print(f"F[l] - X[l] {(F[l] - X[l]).shape}")
+       
+#     N = np.full(Y.shape, M) - 1
+
+#     a, b, c, d = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+#     a1, b1, c1 = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+#     af, bf, cf = np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0), np.full(Y1.shape, 0.0)
+
+#     flag_30 = np.full(Y.shape, False)
+
+#     cycle_flag = np.logical_not(Y < X[l][:,0])
+#     while cycle_flag.any():
+#         l = np.where(cycle_flag, l+1, l)
+#         flag_30 =  np.where(l > N, True, flag_30)
+#         cycle_flag = np.logical_not(Y < X[l][:,0])
+#         cycle_flag = np.where(l >= N, False, cycle_flag)
+
+#     flag_31 = np.logical_not(l==ll)
+#     flag_3031 = np.logical_and(flag_30, flag_31)
+#     # flag 30
+#     l_3031 = np.where(l < N, l, N) 
+#     l = np.where(flag_3031, l_3031, l)
+    
+#     flag = np.full((F.T.shape[0], *flag_3031.shape), flag_3031).T
+    
+#     c_3031 = np.zeros(c.shape) 
+#     c = np.where(flag, c_3031, c)
+
+#     b_3031 = (F[l]-F[l-1])/(X[l]-X[l-1])
+
+#     b = np.where(flag, b_3031, b)
+
+#     a_3031 = F[l]-X[l]*b 
+#     a = np.where(flag, a_3031, a)
+
+#     ll_3031 = l
+#     ll = np.where(flag_3031, ll_3031, ll)
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_30.shape), flag_30).T 
+
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_20 = np.logical_not(l==ll)
+#     flag_21 = l==1
+#     flag_2021 = np.logical_and(flag_20, flag_21)
+#     flag_31 = np.logical_not(l==ll)
+#     flag_202131 = np.logical_and(flag_2021, flag_31)
+
+#     # flag 30
+#     l_202131 = np.where(l < N, l, N) 
+#     l = np.where(flag_202131, l_202131, l) 
+
+#     flag = np.full((F.T.shape[0], *flag_202131.shape), flag_202131).T 
+
+#     c_202131 = np.zeros(c.shape)  
+#     c = np.where(flag, c_202131, c)
+
+#     b_202131 = (F[l]-F[l-1])/(X[l]-X[l-1])
+#     b = np.where(flag, b_202131, b)
+
+#     a_202131 = F[l]-X[l]*b 
+#     a = np.where(flag, a_202131, a)
+
+#     ll_202131 = l
+#     ll = np.where(flag_202131, ll_202131, ll)
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_2021.shape), flag_2021).T 
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     # # #  
+#     flag_m21 = np.logical_not(flag_21)
+#     flag_20m21 = np.logical_and(flag_20, flag_m21)
+#     flag_311 = np.logical_or((l > (ll + 1)), l==2)
+#     flag_20m2131 = np.logical_and(flag_20m21, flag_311)
+
+#     # flag 31
+#     l1_20m2131 = l - 1
+#     l1 = np.where(flag_20m2131, l1_20m2131, l1)
+
+#     l2_20m2131 = l - 2
+#     l2 = np.where(flag_20m2131, l2_20m2131, l2)
+
+#     flag = np.full((F.T.shape[0], *flag_20m2131.shape), flag_20m2131).T 
+#     d_20m2131 = (F[l1] - F[l2]) / (X[l1] - X[l2])
+#     d = np.where(flag, d_20m2131, d)
+
+#     c1_20m2131 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
+#     c1 = np.where(flag, c1_20m2131, c1)
+
+#     b1_20m2131 = d - (X[l1] + X[l2]) * c1                                 
+#     b1 = np.where(flag, b1_20m2131, b1)
+
+#     a1_20m2131 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1 
+#     a1 = np.where(flag, a1_20m2131, a1)
+
+#     # flag_42
+#     flag_42 = np.logical_not(l < N)
+#     flag_20m213142 = np.logical_and(flag_20m2131, flag_42)
+#     flag = np.full((F.T.shape[0], *flag_20m213142.shape), flag_20m213142).T 
+
+#     c = np.where(flag, c1, c)                                                      
+#     b = np.where(flag, b1, b)                                                         
+#     a = np.where(flag, a1, a)                                                          
+#     ll= np.where(flag_20m213142, l, ll)      
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     # flag 25
+#     flag = np.full((F.T.shape[0], *flag_20m2131.shape), flag_20m2131).T 
+
+#     d_20m2131 = (F[l]-F[l1])/(X[l]-X[l1])  
+#     d = np.where(flag, d_20m2131, d)
+#     cf_20m2131 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+#     cf = np.where(flag, cf_20m2131, cf)
+    
+#     bf_20m2131 = d - (X[l] + X[l1]) * cf                                   
+#     bf = np.where(flag, bf_20m2131, bf)
+    
+#     af_20m2131 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+#     af = np.where(flag, af_20m2131, af)
+
+#     # flag 26
+#     eps = 1e-15
+#     WT = np.zeros(cf.shape)
+#     WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+#     a_20m2131 = af + WT*(a1-af)  
+#     a = np.where(flag, a_20m2131, a)
+
+#     b_20m2131 = bf + WT*(b1-bf) 
+#     b = np.where(flag, b_20m2131, b) 
+
+#     c_20m2131 = cf + WT*(c1-cf) 
+#     c = np.where(flag, c_20m2131, c) 
+
+#     ll = np.where(flag_20m2131, l, ll) 
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m31 = np.logical_not(flag_31)
+#     flag_20m21m31 = np.logical_and(flag_20m21, flag_m31)
+#     flag_42 = (l==N)
+#     flag_20m21m3142 = np.logical_and(flag_20m21m31, flag_42)
+#     flag = np.full((F.T.shape[0], *flag_20m21m3142.shape), flag_20m21m3142).T 
+    
+#     c = np.where(flag, c1, c)                                                      
+#     b = np.where(flag, b1, b)                                                         
+#     a = np.where(flag, a1, a)                                                          
+#     ll = np.where(flag, l, ll)  
+
+#     # flag 50
+#     flag = np.full((F.T.shape[0], *flag_20m213142.shape), flag_20m213142).T 
+#     G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m42 = np.logical_not(flag_42)
+#     flag_20m21m31m42 = np.logical_and(flag_20m21m31, flag_m42)
+
+#     l1_20m21m31m42 = l - 1
+#     l1 = np.where(flag_20m21m31m42, l1_20m21m31m42, l1)
+
+#     flag = np.full((F.T.shape[0], *flag_20m21m31m42.shape), flag_20m21m31m42).T
+
+#     c1 = np.where(flag, cf, c1)                                                      
+#     b1 = np.where(flag, bf, b1)                                                         
+#     a1 = np.where(flag, af, a1)   
+
+#     # flag 25
+#     L = np.max(l)
+#     d_20m21m31m42 = (F[l]-F[l1])/(X[l]-X[l1])  
+#     d = np.where(flag, d_20m21m31m42, d)
+
+#     cf_20m21m31m42 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
+#     cf = np.where(flag, cf_20m21m31m42, cf)
+    
+#     bf_20m21m31m42 = d - (X[l] + X[l1]) * cf                                   
+#     bf = np.where(flag, bf_20m21m31m42, bf)
+    
+#     af_20m21m31m42 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+#     af = np.where(flag, af_20m21m31m42, af)
+
+#     # flag 26
+#     eps = 1e-15
+#     WT = np.zeros(cf.shape)
+#     WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+
+#     a_20m21m31m42 = af + WT*(a1-af)  
+#     a = np.where(flag, a_20m21m31m42, a)
+
+#     b_20m21m31m42 = bf + WT*(b1-bf) 
+#     b = np.where(flag, b_20m21m31m42, b) 
+
+#     c_20m21m31m42 = cf + WT*(c1-cf) 
+#     c = np.where(flag, c_20m21m31m42, c) 
+
+#     ll = np.where(flag, l, ll) 
+
+#     # flag 50
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)  
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     flag_m20 = np.logical_not(flag_20) 
+#     flag = np.full((F.T.shape[0], *flag_m20.shape), flag_m20).T
+
+#     G = np.where(np.logical_not(G_full),  a + b*Y1 + c * Y1**2, G)
+#     G_full = np.where(flag, True, G_full)
+#     if G_full.all():
+#         return G.reshape(*U_shape, G.shape[1])
+
+#     return G.reshape(*U_shape, G.shape[1]) 
+
+
+# def f_30(X, F, N, l):
+#     l = min(N,l) - 1                                                  
+#     c = 0.0                                                             
+#     b = (F[l]-F[l-1])/(X[l]-X[l-1])                        
+#     a = F[l]-X[l]*b                                            
+#     ll = l
+#     return a, b, c, (l+1), (ll+1)
+
+# def f_21(X, F, N, l, l1):
+#     l, l1 = l - 1, l1 - 1
+#     l2 = l - 2                                                          
+#     d = (F[l1] - F[l2]) / (X[l1] - X[l2])
+#     c1 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
+#     b1 = d - (X[l1] + X[l2]) * c1                                 
+#     a1 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1  
+#     return a1, b1, c1, l2+1
+
+# def f_25(X, F, N, l, l1):
+#     l, l1 = l - 1, l1 - 1
+#     d = (F[l]-F[l1])/(X[l]-X[l1])                          
+#     cf = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])   
+#     bf = d - (X[l] + X[l1]) * cf                                   
+#     af = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
+#     return af, bf, cf
+
+# def f_26(a1, b1, c1, af, bf, cf, l):
+#     WT = 0.0
+#     if (abs(cf)!=0.0):
+#         WT = abs(cf) / (abs(cf)+abs(c1))
+#     a = af + WT*(a1-af)                                            
+#     b = bf + WT*(b1-bf)                                            
+#     c = cf + WT*(c1-cf)                                            
+#     ll = l  
+#     return a, b, c, ll
+
+# def f_22(a, b, c, l, ll ):
+#     return a, b, c, l, ll 
 
 # def map1(X, F, N, Y):
 #     G = 0.0
@@ -323,48 +1013,62 @@ def map1(X, F, N, Y):
 #     af, bf, cf = 1.0, 1.0, 1.0
 
 #     y = Y #Y[1]
-    
-#     X = np.array(X)
-#     Y = np.array(Y)
-#     F = np.array(F)
-#     G = np.zeros(Y.shape)
-#     l, ll, l1, l2 = np.full(Y.shape, 2), np.full(Y.shape, 0), np.full(Y.shape, 0), np.full(Y.shape, 0)
-
-#     a, b, c = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
-#     a1, b1, c1 = np.fulconditionall(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
-#     af, bf, cf = np.full(Y.shape, 1.0), np.full(Y.shape, 1.0), np.full(Y.shape, 1.0)
 
 #     while not(y < X[l-1]):
 #         l += 1
 #         if (l > N): 
 #             break
-
 #     if (l > N) or (l == 2):
-#         a = f_30(X, F, N, l, 0)
-#         b = f_30(X, F, N, l, 1)
-#         c = f_30(X, F, N, l, 2)
-#         l = f_30(X, F, N, l, 3)
-#         ll = f_30(X, F, N, l, 4)
-
+#         a, b, c, l, ll = f_30(X, F, N, l)
 #     else:
 #         l1 = l - 1
 #         a1, b1, c1, l2 = f_21(X, F, N, l, l1)
-#         a1 = f_21(X, F, N, l, l1, 0)
-#         b1 = f_21(X, F, N, l, l1, 1)
-#         c1 = f_21(X, F, N, l, l1, 2)
-#         l2 = f_21(X, F, N, l, l1, 3)
-
-#         if (l != N):   
-#             af = f_25(X, F, N, l, l1, 0) 
-#             bf = f_25(X, F, N, l, l1, 1) 
-#             cf = f_25(X, F, N, l, l1, 2)   
-#             a = f_26(a1, b1, c1, af, bf, cf, l, 0)
-#             b = f_26(a1, b1, c1, af, bf, cf, l, 1)
-#             c = f_26(a1, b1, c1, af, bf, cf, l, 2)
-#             ll = f_26(a1, b1, c1, af, bf, cf, l, 3)
-
+#         if (l != N): 
+#             af, bf, cf = f_25(X, F, N, l, l1)    
+#             a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)       
 #         else:
 #             a, b, c, ll = a1, b1, c1, l
-
 #     G = a + b*y + c*y**2
+#     return G 
+
+# def map1(X, F, N, Y):
+#     l, ll, l1, l2 = 2, 0, 0, 0
+#     a, b, c = 1.0, 1.0, 1.0
+#     a1, b1, c1 = 1.0, 1.0, 1.0
+#     af, bf, cf = 1.0, 1.0, 1.0
+#     for k in range(1):
+#         y = Y
+#         while not(y < X[l]):
+#             l += 1
+#             if (l > N):
+#                 if (l != ll):
+#                     a, b, c, l, ll = f_30(X, F, N, l)
+#                 break
+
+#         if (l != ll) and (l != 2):
+#             l1 = l - 1 
+#             if (l > (ll + 1) or l == 3):
+#                 a1, b1, c1, l2 = f_21(X, F, N, l, l1)
+
+#                 if (l >= N):    
+#                     a, b, c, l, ll = a1, b1, c1, l, l    
+#                 else: 
+#                     af, bf, cf = f_25(X, F, N, l, l1) 
+#                     a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)                                               
+#             else: 
+#                 c1 = cf                                                       
+#                 b1 = bf                                                       
+#                 a1 = af
+
+#                 if (l==N):
+#                     a, b, c, ll = f_22(a1, b1, c1, l)
+#                 else:
+#                     af, bf, cf = f_25(X, F, N, l, l1)    
+#                     a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)   
+
+
+#         elif (l != ll) and (l == 2):
+#             a, b, c, l, ll = f_30(X, F, N, l)
+
+#         G = a + b*y + c*y**2
 #     return G 

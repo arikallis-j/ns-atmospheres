@@ -57,6 +57,7 @@ class NS_Point(Point):
         self.kappa_E = kappa_E_rad(self.nu, self.delta, self.beta_ph, self.cos_xi)
         self.B_Omega = B_Omega_rad(self.I_e, self.kappa_E) 
 
+
 class NS_Surface(Surface):
     def __init__(self, NS, r, r_func):
         super().__init__(NS, NS_Point, r=r, r_func=r_func)
@@ -84,7 +85,6 @@ class NS_Surface(Surface):
                 if not(pnt.cos_sig < 0.0):
                     self.surf_real += pnt.dOmega
                     self.B_real += pnt.B_int
-        
         self.surf /= l_phi
         self.R_pr = sqrt(self.surf)
 
