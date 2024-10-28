@@ -143,7 +143,6 @@ class Calculator:
         # graph.draw_picture(save=True, draw=False)   
         # graph.draw_table() 
 
-
     def lines(self):
         name = "J0000+0000"
         system = "base"
