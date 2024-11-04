@@ -198,48 +198,41 @@ def T_c(chem, fc_key):
 def T_flux_eff(key_l, flux_NS, T_eff_NS, Flux_edd_NS, N_model):
     if key_l == 1:
         T_eff = T_SB(flux_NS * Flux_edd_NS)
-        flux = flux_NS# np.full(Flux_edd_NS.shape,flux_NS)#(2,2),flux_NS)
+        flux = np.full(Flux_edd_NS.shape, flux_NS)
     else:
         T_eff = T_eff_NS 
         flux = Flux_SB(T_eff) / Flux_edd_NS
         if (flux >= FLUX_REL[N_model-1]).any():
             N_model -= 1
-            print(f"""incorrectly flux
-            flux_i  = {flux_NS}
-            flux_rel[N_l] = {FLUX_REL[N_model-1]})
-            flux_i ≥ flux_rel[N_l] = {flux_NS}≥{FLUX_REL[N_model-1]}) = true
-            """)
+            print("incorrectly flux")
+            # print(f"""incorrectly flux
+            # flux_i  = {flux_NS}
+            # flux_rel[N_l] = {FLUX_REL[N_model-1]})
+            # flux_i ≥ flux_rel[N_l] = {flux_NS}≥{FLUX_REL[N_model-1]}) = true
+            # """)
     return flux, T_eff, N_model
 
 def wwf_tcf_T(T_c, w_b, flux_i, log_g, N_model):
     T_c = np.array(T_c)
     w_b = np.array(w_b)
-    flux_i = np.array(flux_i)
-    # print(np.array(FLUX_REL).shape, T_c.shape, N_model, flux_i.shape)
-    # Вызов функции интерполяции для T_c
-    size = np.size(flux_i)
-    if size==1:
-        N, M = 1, 1
-        Flux = np.full((1,1), flux_i)
-    else:
-        N, M = flux_i.shape
-        Flux = np.full((1,1), flux_i)
-    T_g = map1(FLUX_REL, T_c, N_model, flux_i)  # Предполагаем, что map1 возвращает пару значений      
-    # Вызов функции интерполяции для w
-    w_g = map1(FLUX_REL, w_b, N_model, flux_i)  # Аналогичное предположение для вывода функции map1\
-    # print(T_g.shape)
-    T_g = np.squeeze(T_g)
-    w_g = np.squeeze(w_g)
-    # print(T_g.shape)
-    # T_g = T_g.reshape(T_g.shape[0]*T_g.shape[1],T_g.shape[2]).T
-    # w_g = w_g.reshape(w_g.shape[0]*w_g.shape[1],w_g.shape[2]).T
-    # print(np.array(LOG_G).shape, T_g.shape, 9, log_g.shape)
-    T_f = map1(LOG_G, T_g, 9, log_g)
-    w_f = map1(LOG_G, w_g, 9, log_g) 
-    # print(T_f)
+    print(flux_i)
+
+    T_c = np.tile(T_c[:, :, None, None], (1, 1, *log_g.shape))
+    w_b = np.tile(w_b[:, :, None, None], (1, 1, *log_g.shape))
+
+    T_g = map1(FLUX_REL, T_c, flux_i)  # Предполагаем, что map1 возвращает пару значений      
+    w_g = map1(FLUX_REL, w_b, flux_i)  # Аналогичное предположение для вывода функции map1\
+    
+
+    T_g = np.tile(T_g[:, None, :, :], (1, 1, 1, 1))
+    w_g = np.tile(w_g[:, None, :, :], (1, 1, 1, 1))
+
+    T_f = map1(LOG_G, T_g, log_g)
+    w_f = map1(LOG_G, w_g, log_g)
+
     T_f = T_f.reshape(log_g.shape)
     w_f = w_f.reshape(log_g.shape)
-    # print(w_f.shape)
+
     wwf_T = w_f
     tcf_T = T_f
     return wwf_T, tcf_T

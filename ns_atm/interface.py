@@ -48,11 +48,10 @@ class Calculator:
         return f"Printing of NeurtonStar: {name} with kind={kind}"
     
     def build(self,n):
-        A = np.full((120, 60), 0)
-        A = A.reshape(np.size(A))
-        Fact = np.prod(A)
-        print(A)
-        print(Fact)
+        Y = np.full((12,6), 1)
+        A = np.full((9,), 1)
+        Y = Y.reshape(np.size(Y))
+        print(Y.shape)
         return f"Building done. "
     
     def init(self, name):

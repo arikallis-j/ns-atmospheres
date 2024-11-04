@@ -1,5 +1,5 @@
 import numpy as np
-
+from icecream import ic
 from .const import *
 
 def R_const(r_0, phi, theta, star):
@@ -224,349 +224,206 @@ def inverse(f, y0, args=(), pw=5, base=0.0):
         x0 = (x1 + x2)/2
     return round(x0, pw-1)
 
-def map1(X, F, M, Y):  
+#оригинальная функция map1 с переводом на Python
+def map0(xold, fold, xnew):
+    # Определение переменных
+    l = 1
+    N = len(xold)
+
+    # Определяем точку относительно массива xold
+    while l < N and xnew >= xold[l]:
+        l += 1
+        
+    # Краевой случай для l == 1 or l == N
+    if l == 1 or l == N:
+        ic("Border case: line interpolation")
+        l = min(N - 1, l)
+        x1, x0 = xold[l], xold[l-1]
+        f1, f0 = fold[l], fold[l-1]
+        c_l = 0.0
+        b_l = (f1 - f0) / (x1 - x0)
+        a_l = f1 - x1 * b_l
+        return a_l + (b_l + c_l * xnew) * xnew
+
+    # Основная квадратичная интерполяция
+
+    x2, x1, x0 = xold[l], xold[l-1], xold[l-2]
+    f2, f1, f0 = fold[l], fold[l-1], fold[l-2]
+
+    d  = (f1 - f0) / (x1 - x0)
+    c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+    b = d - (x1 + x0) * c
+    a = f0 - x0 * d + x1 * x0 * c
+
+    cm , bm, am = c, b, a
+
+    # Дополнительная квадратичная интерполяция, если не (почти) краевой случай
+    if l != N - 1:
+        ic("General case: quadric interpolation with correction")
+        x2, x1, x0 = xold[l+1], xold[l], xold[l-1]
+        f2, f1, f0 = fold[l+1], fold[l], fold[l-1]
+
+        d  = (f1 - f0) / (x1 - x0)
+        c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+        b = d - (x1 + x0) * c
+        a = f0 - x0 * d + x1 * x0 * c
+
+        cp , bp, ap = c, b, a
+
+        wt = abs(cp) / (abs(cp) + abs(cm)) if abs(cp) != 0 else 0.0
+
+        a = ap + wt * (am - ap)
+        b = bp + wt * (bm - bp)
+        c = cp + wt * (cm - cp)
+
+    else:
+        ic("Specific case: quadric interpolation without correction")
+
+    return a + (b + c * xnew) * xnew
+
+def map1(X, F, Y):     
     X = np.array(X)
-    Y = np.array(Y)
-    Y = Y.reshape(np.size(Y))
-
     F = np.array(F)
-    G = np.zeros(Y.shape)
-    G_full = np.full(Y.shape, False)
+    Y = np.array(Y)
 
+    l_shape = X.shape[0]
+    p_shape = F.shape[1]
+    g_shape_a = Y.shape[0]
+    g_shape_b = Y.shape[1]
 
-    N = np.full(Y.shape, M) - 1
-    l, ll, l1, l2 = np.full(Y.shape, 1), np.full(Y.shape, -1), np.full(Y.shape, 0), np.full(Y.shape, 0)
+    X = np.full((g_shape_b, g_shape_a, p_shape, l_shape), X.T).T
+    Y = np.full((p_shape, g_shape_a, g_shape_b), Y)
+
+    X = X.reshape((l_shape, p_shape*g_shape_a*g_shape_b))
+    F = F.reshape((l_shape, p_shape*g_shape_a*g_shape_b))
     
-    a, b, c, d = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
-    a1, b1, c1 = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
-    af, bf, cf = np.full(Y.shape, 0.0), np.full(Y.shape, 0.0), np.full(Y.shape, 0.0)
+    Y = Y.reshape((p_shape*g_shape_a*g_shape_b))
 
-    flag_30 = np.full(Y.shape, False)
+    d_shape = F[0,:].shape
 
-    cycle_flag = np.logical_not(Y < X[l])
-    while cycle_flag.any():
-        l = np.where(cycle_flag, l+1, l)
-        flag_30 =  np.where(l > N, True, flag_30)
-        cycle_flag = np.logical_not(Y < X[l])
-        cycle_flag = np.where(l >= N, False, cycle_flag)
+    R = np.full(d_shape, 0.0)
 
-    flag_31 = np.logical_not(l==ll)
-    flag_3031 = np.logical_and(flag_30, flag_31)
-    # flag 30
-    l_3031 = np.where(l < N, l, N) 
-    l = np.where(flag_3031, l_3031, l)
+    N = l_shape - 1
+
+    for j in range(X.shape[1]):
+        #ic(100*j/X.shape[1], "%")
+        a, b, c = 0.0, 0.0, 0.0
+        l = 1
+        #ic(Y[j], X[l,j], Y[j] >= X[l,j])
+        while l < N and Y[j] >= X[l,j]:
+            l += 1
+            
+        # Краевой случай для l == 1 or l == N
+        if l == 1 or l == N:
+            #ic("Border case: line interpolation")
+            l = min(N - 1, l)
+            x1, x0 = X[l,j], X[l-1,j]
+            f1, f0 = F[l,j], F[l-1,j]
+            c = 0.0
+            b = (f1 - f0) / (x1 - x0)
+            a = f1 - x1 * b
+            #ic(1,l,a,b,c)
+        
+        # Основная квадратичная интерполяция
+        else:
+            x2, x1, x0 = X[l,j], X[l-1,j], X[l-2,j]
+            f2, f1, f0 = F[l,j], F[l-1,j], F[l-2,j]
+
+            d  = (f1 - f0) / (x1 - x0)
+            c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+            b = d - (x1 + x0) * c
+            a = f0 - x0 * d + x1 * x0 * c
+
+            cm , bm, am = c, b, a
+            
+            # Дополнительная квадратичная интерполяция, если не (почти) краевой случай
+            if l != N - 1:
+                #ic("General case: quadric interpolation with correction")
+                x2, x1, x0 = X[l+1,j], X[l,j], X[l-1,j]
+                f2, f1, f0 = F[l+1,j], F[l,j], F[l-1,j]
+
+                d  = (f1 - f0) / (x1 - x0)
+                c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+                b = d - (x1 + x0) * c
+                a = f0 - x0 * d + x1 * x0 * c
+
+                cp , bp, ap = c, b, a
+
+                wt = abs(cp) / (abs(cp) + abs(cm)) if abs(cp) != 0 else 0.0
+
+                a = ap + wt * (am - ap)
+                b = bp + wt * (bm - bp)
+                c = cp + wt * (cm - cp)
+                #ic(3,l,a,b,c)
+            else:
+                pass
+                #ic(2,l,a,b,c)
+                #ic("Specific case: quadric interpolation without correction")
+
+
+        R[j] = a + (b + c * Y[j]) * Y[j]
+        #ic(R[j])
+    return R.reshape(p_shape, g_shape_a, g_shape_b)
+   
+
+def map2(X, F, Y):
+    # Приводим массивы к нужным формам для векторных вычислений
+    X = np.array(X)  # X имеет размер (L,)
+    F = np.array(F)  # F имеет размер (L, P, A, B)
+    Y = np.array(Y)  # Y имеет размер (A, B)
     
-    flag = flag_3031
+    # Получаем размеры массивов
+    l_shape = X.shape[0]
+    p_shape = F.shape[1]
+    g_shape_a, g_shape_b = Y.shape
+
+    # Векторизуем X и F для соответствия размерности (L, P * A * B)
+    X = np.tile(X[:, None], (1, p_shape * g_shape_a * g_shape_b))
+    F = F.reshape((l_shape, p_shape * g_shape_a * g_shape_b))
+    Y = Y.flatten()  # Преобразуем Y в одномерный массив для удобства
     
-    c_3031 = np.zeros(c.shape) 
-    c = np.where(flag, c_3031, c)
-
-    b_3031 = (F[l]-F[l-1])/(X[l]-X[l-1])
-
-    b = np.where(flag, b_3031, b)
-
-    a_3031 = F[l]-X[l]*b 
-    a = np.where(flag, a_3031, a)
-
-    ll_3031 = l
-    ll = np.where(flag_3031, ll_3031, ll)
-
-    # flag 50
-    flag = flag_30
-
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    flag_20 = np.logical_not(l==ll)
-    flag_21 = l==1
-    flag_2021 = np.logical_and(flag_20, flag_21)
-    flag_31 = np.logical_not(l==ll)
-    flag_202131 = np.logical_and(flag_2021, flag_31)
-
-    # flag 30
-    l_202131 = np.where(l < N, l, N) 
-    l = np.where(flag_202131, l_202131, l) 
-
-    flag = flag_202131
-
-    c_202131 = np.zeros(c.shape)  
-    c = np.where(flag, c_202131, c)
-
-    b_202131 = (F[l]-F[l-1])/(X[l]-X[l-1])
-    b = np.where(flag, b_202131, b)
-
-    a_202131 = F[l]-X[l]*b 
-    a = np.where(flag, a_202131, a)
-
-    ll_202131 = l
-    ll = np.where(flag_202131, ll_202131, ll)
-
-    # flag 50l
-    flag = flag_2021
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    # # #  
-    flag_m21 = np.logical_not(flag_21)
-    flag_20m21 = np.logical_and(flag_20, flag_m21)
-    flag_311 = np.logical_or((l > (ll + 1)), l==2)
-    flag_20m2131 = np.logical_and(flag_20m21, flag_311)
-
-    # flag 31
-    l1_20m2131 = l - 1
-    l1 = np.where(flag_20m2131, l1_20m2131, l1)
-
-    l2_20m2131 = l - 2
-    l2 = np.where(flag_20m2131, l2_20m2131, l2)
-
-    flag = flag_20m2131
-    d_20m2131 = (F[l1] - F[l2]) / (X[l1] - X[l2])
-    d = np.where(flag, d_20m2131, d)
-
-    c1_20m2131 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
-    c1 = np.where(flag, c1_20m2131, c1)
-
-    b1_20m2131 = d - (X[l1] + X[l2]) * c1                                 
-    b1 = np.where(flag, b1_20m2131, b1)
-
-    a1_20m2131 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1 
-    a1 = np.where(flag, a1_20m2131, a1)
-
-    # flag_42
-    flag_42 = np.logical_not(l < N)
-    flag_20m213142 = np.logical_and(flag_20m2131, flag_42)
-    flag = flag_20m213142
-
-    c = np.where(flag, c1, c)                                                      
-    b = np.where(flag, b1, b)                                                         
-    a = np.where(flag, a1, a)                                                          
-    ll= np.where(flag_20m213142, l, ll)      
-
-    # flag 50
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    # flag 25
-    flag = flag_20m2131
-
-    d_20m2131 = (F[l]-F[l1])/(X[l]-X[l1])  
-    d = np.where(flag, d_20m2131, d)
-    cf_20m2131 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
-    cf = np.where(flag, cf_20m2131, cf)
+    # Инициализация для результата
+    R = np.zeros_like(Y, dtype=float)  # Итоговый результат, который будем заполнять
     
-    bf_20m2131 = d - (X[l] + X[l1]) * cf                                   
-    bf = np.where(flag, bf_20m2131, bf)
+    # Вспомогательные массивы для коэффициентов
+    a = np.zeros_like(Y, dtype=float)
+    b = np.zeros_like(Y, dtype=float)
+    c = np.zeros_like(Y, dtype=float)
+
+    # Создаем массивы для хранения промежуточных данных
+    L = np.searchsorted(X[:, 0], Y, side='right')  # Индексы интерполяции для каждого Y
     
-    af_20m2131 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
-    af = np.where(flag, af_20m2131, af)
+    # Логические маски для разных случаев
+    mask1 = (L >= l_shape) | (L < 2)
+    mask2 = (L == 2) | (L == l_shape - 1)
+    mask3 = ~mask1 & ~mask2  # Общий случай для квадратичной интерполяции
 
-    # flag 26
-    eps = 1e-15
-    WT = np.zeros(cf.shape)
-    WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
+    # Граничный случай: линейная интерполяция для крайних точек
+    a[mask1] = F[L[mask1] - 1]
+    b[mask1] = (F[L[mask1]] - F[L[mask1] - 1]) / (X[L[mask1]] - X[L[mask1] - 1])
+    c[mask1] = 0.0
 
-    a_20m2131 = af + WT*(a1-af)  
-    a = np.where(flag, a_20m2131, a)
+    # Квадратичная интерполяция для основного случая
+    d = (F[L - 1] - F[L - 2]) / (X[L - 1] - X[L - 2])
+    cbac = F[L] / ((X[L] - X[L - 1]) * (X[L] - X[L - 2])) + \
+           (F[L - 2] / (X[L] - X[L - 2]) - F[L - 1] / (X[L] - X[L - 1])) / (X[L - 1] - X[L - 2])
+    bbac = d - (X[L - 1] + X[L - 2]) * cbac
+    abac = F[L - 2] - X[L - 2] * d + X[L - 1] * X[L - 2] * cbac
 
-    b_20m2131 = bf + WT*(b1-bf) 
-    b = np.where(flag, b_20m2131, b) 
+    # Вторая часть: интерполяция c использованием ближайших значений
+    afor = F[L - 1] - X[L - 1] * d + X[L] * X[L - 1] * cbac
+    bfor = d - (X[L] + X[L - 1]) * cbac
+    cfor = F[L + 1] / ((X[L + 1] - X[L]) * (X[L + 1] - X[L - 1])) + \
+           (F[L - 1] / (X[L + 1] - X[L - 1]) - F[L] / (X[L + 1] - X[L])) / (X[L] - X[L - 1])
 
-    c_20m2131 = cf + WT*(c1-cf) 
-    c = np.where(flag, c_20m2131, c) 
+    # Расчет весов и итоговых коэффициентов
+    wt = np.abs(cfor) / (np.abs(cfor) + np.abs(cbac))
+    a[mask3] = afor + wt * (abac - afor)
+    b[mask3] = bfor + wt * (bbac - bfor)
+    c[mask3] = cfor + wt * (cbac - cfor)
 
-    ll = np.where(flag_20m2131, l, ll) 
-
-    # flag 50
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    flag_m31 = np.logical_not(flag_31)
-    flag_20m21m31 = np.logical_and(flag_20m21, flag_m31)
-    flag_42 = (l==N)
-    flag_20m21m3142 = np.logical_and(flag_20m21m31, flag_42)
-    flag = flag_20m21m3142
+    # Итоговая интерполяция
+    R = a + b * Y + c * Y**2
     
-    c = np.where(flag, c1, c)                                                      
-    b = np.where(flag, b1, b)                                                         
-    a = np.where(flag, a1, a)                                                          
-    ll = np.where(flag, l, ll)  
-
-    # flag 50
-    flag = flag_20m213142
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    flag_m42 = np.logical_not(flag_42)
-    flag_20m21m31m42 = np.logical_and(flag_20m21m31, flag_m42)
-
-    l1_20m21m31m42 = l - 1
-    l1 = np.where(flag_20m21m31m42, l1_20m21m31m42, l1)
-
-    flag = flag_20m21m31m42
-
-    c1 = np.where(flag, cf, c1)                                                      
-    b1 = np.where(flag, bf, b1)                                                         
-    a1 = np.where(flag, af, a1)   
-
-    # flag 25
-    L = np.max(l)
-    d_20m21m31m42 = (F[l]-F[l1])/(X[l]-X[l1])  
-    d = np.where(flag, d_20m21m31m42, d)
-
-    cf_20m21m31m42 = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])      
-    cf = np.where(flag, cf_20m21m31m42, cf)
-    
-    bf_20m21m31m42 = d - (X[l] + X[l1]) * cf                                   
-    bf = np.where(flag, bf_20m21m31m42, bf)
-    
-    af_20m21m31m42 = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
-    af = np.where(flag, af_20m21m31m42, af)
-
-    # flag 26
-    eps = 1e-15
-    WT = np.zeros(cf.shape)
-    WT = np.where((abs(cf)) == WT, WT, abs(cf) / (abs(cf) + abs(c1) + eps))
-
-    a_20m21m31m42 = af + WT*(a1-af)  
-    a = np.where(flag, a_20m21m31m42, a)
-
-    b_20m21m31m42 = bf + WT*(b1-bf) 
-    b = np.where(flag, b_20m21m31m42, b) 
-
-    c_20m21m31m42 = cf + WT*(c1-cf) 
-    c = np.where(flag, c_20m21m31m42, c) 
-
-    ll = np.where(flag, l, ll) 
-
-    # flag 50
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    flag_m20 = np.logical_not(flag_20) 
-    flag = flag_m20
-
-    G = np.where(np.logical_not(G_full),  a + b*Y + c * Y**2, G)
-    G_full = np.where(flag, True, G_full)
-    if G_full.all():
-        return G
-
-    return G
-
-# def f_30(X, F, N, l):
-#     l = min(N,l) - 1                                                  
-#     c = 0.0                                                             
-#     b = (F[l]-F[l-1])/(X[l]-X[l-1])                        
-#     a = F[l]-X[l]*b                                            
-#     ll = l
-#     return a, b, c, (l+1), (ll+1)
-
-# def f_21(X, F, N, l, l1):
-#     l, l1 = l - 1, l1 - 1
-#     l2 = l - 2                                                          
-#     d = (F[l1] - F[l2]) / (X[l1] - X[l2])
-#     c1 = F[l]/((X[l]-X[l1])*(X[l]-X[l2])) + (F[l2]/(X[l]-X[l2]) - F[l1]/(X[l]-X[l1]))/(X[l1]-X[l2]) 
-#     b1 = d - (X[l1] + X[l2]) * c1                                 
-#     a1 = F[l2] - X[l2] * d + X[l1] * X[l2] * c1  
-#     return a1, b1, c1, l2+1
-
-# def f_25(X, F, N, l, l1):
-#     l, l1 = l - 1, l1 - 1
-#     d = (F[l]-F[l1])/(X[l]-X[l1])                          
-#     cf = F[l+1]/((X[l+1]-X[l])*(X[l+1]-X[l1])) + (F[l1]/(X[l+1]-X[l1]) - F[l]/(X[l+1]-X[l]))/(X[l]-X[l1])   
-#     bf = d - (X[l] + X[l1]) * cf                                   
-#     af = F[l1]-X[l1]*d + X[l]*X[l1]*cf 
-#     return af, bf, cf
-
-# def f_26(a1, b1, c1, af, bf, cf, l):
-#     WT = 0.0
-#     if (abs(cf)!=0.0):
-#         WT = abs(cf) / (abs(cf)+abs(c1))
-#     a = af + WT*(a1-af)                                            
-#     b = bf + WT*(b1-bf)                                            
-#     c = cf + WT*(c1-cf)                                            
-#     ll = l  
-#     return a, b, c, ll
-
-# def f_22(a, b, c, l, ll ):
-#     return a, b, c, l, ll 
-
-# def map1(X, F, N, Y):
-#     G = 0.0
-#     l, ll, l1 = 2, 0, 0
-
-#     a, b, c = 1.0, 1.0, 1.0
-#     a1, b1, c1 = 1.0, 1.0, 1.0
-#     af, bf, cf = 1.0, 1.0, 1.0
-
-#     y = Y #Y[1]
-
-#     while not(y < X[l-1]):
-#         l += 1
-#         if (l > N): 
-#             break
-#     if (l > N) or (l == 2):
-#         a, b, c, l, ll = f_30(X, F, N, l)
-#     else:
-#         l1 = l - 1
-#         a1, b1, c1, l2 = f_21(X, F, N, l, l1)
-#         if (l != N): 
-#             af, bf, cf = f_25(X, F, N, l, l1)    
-#             a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)       
-#         else:
-#             a, b, c, ll = a1, b1, c1, l
-#     G = a + b*y + c*y**2
-#     return G 
-
-# def map1(X, F, N, Y):
-#     l, ll, l1, l2 = 2, 0, 0, 0
-#     a, b, c = 1.0, 1.0, 1.0
-#     a1, b1, c1 = 1.0, 1.0, 1.0
-#     af, bf, cf = 1.0, 1.0, 1.0
-#     for k in range(1):
-#         y = Y
-#         while not(y < X[l]):
-#             l += 1
-#             if (l > N):
-#                 if (l != ll):
-#                     a, b, c, l, ll = f_30(X, F, N, l)
-#                 break
-
-#         if (l != ll) and (l != 2):
-#             l1 = l - 1 
-#             if (l > (ll + 1) or l == 3):
-#                 a1, b1, c1, l2 = f_21(X, F, N, l, l1)
-
-#                 if (l >= N):    
-#                     a, b, c, l, ll = a1, b1, c1, l, l    
-#                 else: 
-#                     af, bf, cf = f_25(X, F, N, l, l1) 
-#                     a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)                                               
-#             else: 
-#                 c1 = cf                                                       
-#                 b1 = bf                                                       
-#                 a1 = af
-
-#                 if (l==N):
-#                     a, b, c, ll = f_22(a1, b1, c1, l)
-#                 else:
-#                     af, bf, cf = f_25(X, F, N, l, l1)    
-#                     a, b, c, ll = f_26(a1, b1, c1, af, bf, cf, l)   
-
-
-#         elif (l != ll) and (l == 2):
-#             a, b, c, l, ll = f_30(X, F, N, l)
-
-#         G = a + b*y + c*y**2
-#     return G 
+    # Возвращаем результат в нужной форме
+    return R.reshape((p_shape, g_shape_a, g_shape_b))
