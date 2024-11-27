@@ -5,37 +5,19 @@ from .radiacional import *
 from .rotational import *       
 from .model import * 
 
-myint = np.int64
-myfloat = np.float64
-mychar = np.str_
+class NS_Point(Point):
+    def __init__(self, NS, coord, phi, theta, r_0, r_func):
+        super().__init__(NS, coord, phi, theta, r_0=r_0, r_func=r_func)
 
-
-class NS_SurfaceNew(Surface):
-    def __init__(self, NS, size, rng):
+        # Point parameters
         self.NS = NS
-        self.r_func = NS.R_func
-        self.r_0, self.R_0 = NS.r_eq, NS.R_eq 
-
-        ph_range, th_range, nu_range = rng
-        N_ph, N_th, N_nu = size
-
-        # УМЕНЬШИТЬ РАЗМЕРНОСТЬ ПОСЛЕ ИСПОЛЬЗОВАНИЯ
-        # ЛУЧШЕ:
-        # - все рабочие переменные без self
-        # - после использования -- c self
-        self.phi_init = np.full((N_th, N_ph), np.linspace(*ph_range, N_ph)).T
-        self.theta_init = np.full((N_ph, N_th), np.linspace(*th_range, N_th))
-        theta_sym = np.where(self.theta_init < 90.0, self.theta_init, 180.0 - self.theta_init) * RAD
-        self.r_init = self.r_func(self.r_0, self.phi_init, theta_sym , self.NS)
-        self.phi = self.phi_init * RAD
-        self.theta = self.theta_init * RAD
-        self.R = self.r_init * KM
-
-        self.ph_range = ph_range[0] * RAD, ph_range[1] * RAD
-        self.th_range = th_range[0] * RAD, th_range[1] * RAD
+        self.Surface = NS.Surface
         self.sin_th, self.cos_th = sin(self.theta), cos(self.theta)
         self.sin_ph, self.cos_ph = sin(self.phi), cos(self.phi)
-
+        self.dS, self.dOmega, self.B_int = 0.0, 0.0, []
+        
+        # General Relativity
+        ### ВОПРОС ПРО ЮЖНОЕ ПОЛУШАРИЕ
         self.dR = dR_metric(self.R_0, self.sin_th, self.cos_th, self.NS.chi, self.NS.Omega)   
         self.u = u_metric(self.R, self.NS.R_sch_cor)
         self.r_bar, self.u_bar = r_u_metric(self.R, self.cos_th, self.NS.q_c, self.NS.b_c, self.NS.R_sch_cor)
@@ -62,64 +44,60 @@ class NS_SurfaceNew(Surface):
         self.cos_xi = xi_rot(self.sin_a, self.sin_psi, self.sin_ph, self.NS.sin_i)
         self.delta = delta_rot(self.beta, self.gamma, self.cos_xi)
         self.cos_sig_1 = sigma_1_rot(self.cos_sig, self.delta)
-        
-        # # radiational
+
+        # radiational
         self.Flux_edd_real = Flux_edd(self.grv, self.NS.sigma_T)
-        self.flux, self.T_eff, self.N_model = T_flux_eff(self.NS.flux_key, self.NS.flux, self.NS.T_eff, self.Flux_edd_real, N_MODEL)
-        self.wwf_T, self.tcf_T = wwf_tcf_T(self.NS.T_c, self.NS.w_b, self.flux, self.log_g, self.N_model)
+        self.flux, self.T_eff = T_flux_eff(self.NS.flux_key, self.NS.flux, self.NS.T_eff, self.Flux_edd_real)
+        self.wwf_T, self.tcf_T = wwf_tcf_T(self.NS.T_c, self.NS.w_b, self.flux, self.log_g)
+
         # spectra 
-        E, dE = E_base(N_nu, nu_range)
-        self.E = np.full((N_ph, N_th, N_nu), np.array(E))
-        self.dE = np.full((N_ph, N_th, N_nu), np.array(dE))
-        
-        nu_E = np.full((N_nu, N_th, N_ph), self.nu.T).T
-        delta_E = np.full((N_nu, N_th, N_ph), self.delta.T).T
-        beta_ph_E = np.full((N_nu, N_th, N_ph), self.beta_ph.T).T
-        cos_xi_E = np.full((N_nu, N_th, N_ph), self.cos_xi.T).T
-        cos_sig_1_E = np.full((N_nu, N_th, N_ph), self.cos_sig_1.T).T
-        tcf_T_E = np.full((N_nu, N_th, N_ph), self.tcf_T.T).T
-        wwf_T_E = np.full((N_nu, N_th, N_ph), self.wwf_T.T).T
-        self.E_real = E_rad(self.E, nu_E, delta_E, beta_ph_E, cos_xi_E)
-        self.rho = rho_rad(self.E_real, tcf_T_E, spectrum="planc")
-        self.I_e = I_e_rad(self.rho, wwf_T_E, cos_sig_1_E)
-        self.kappa_E = kappa_E_rad(nu_E, delta_E, beta_ph_E, cos_xi_E)
-        self.B_Omega = B_Omega_rad(self.I_e, self.kappa_E)
+        self.E_real = E_rad(self.Surface.E, self.nu, self.delta, self.beta_ph, self.cos_xi)
+        self.rho = rho_rad(self.E_real, self.tcf_T, spectrum="planc")
+        self.I_e = I_e_rad(self.rho, self.wwf_T, self.cos_sig_1)
+        self.kappa_E = kappa_E_rad(self.nu, self.delta, self.beta_ph, self.cos_xi)
+        self.B_Omega = B_Omega_rad(self.I_e, self.kappa_E) 
 
-        # integration
-        self.surf = 0
-        self.surf_real = 0
-        self.dS = dS_metric_1(self.theta, self.cos_eta, self.R, N_ph, N_th, self.ph_range, self.th_range)
-        self.dOmega = dOmega_rad(self.dS, self.cos_sig, self.D)
-        dOmega_E = np.full((N_nu, N_th, N_ph), self.dOmega.T).T
-        self.B_int = self.B_Omega * dOmega_E
-        self.surf = np.sum(self.dS)
 
-        self.dOmega_real = np.where(np.logical_not(self.cos_sig < 0.0), self.dOmega, np.zeros(self.dOmega.shape))
-        self.surf_real = np.sum(self.dOmega_real)
+class NS_Surface(Surface):
+    def __init__(self, NS, r, r_func):
+        super().__init__(NS, NS_Point, r=r, r_func=r_func)
+        self.NS = NS
+        self.E_size = 0
+        self.E, self.dE, self.B_real = np.array([]), np.array([]), np.array([])
+        self.Lum, self.lum = 0.0, 0.0
+        self.w, self.fc = 0.0, 0.0
 
-        cos_sig_E = np.full((N_nu, N_th, N_ph), self.cos_sig.T).T
-        self.B_int_real = np.where(np.logical_not(cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))
-
-        self.B_real = np.sum(self.B_int_real, axis=(0,1))
-
-        ph_min, ph_max = ph_range
+    def integrate(self):
+        n_phi, n_theta = self.size
+        n_f = self.E_size
+        ph_min, ph_max = self.ranges[0]
         l_phi = ph_max - ph_min
 
+        self.surf = 0
+        self.surf_real = 0
+        for i in range(n_theta):
+            for j in range(n_phi):
+                pnt = self.get_point(i, j)
+                pnt.dS = dS_metric(pnt.th, pnt.ph, pnt.R, pnt.cos_eta, pnt.Surface)
+                pnt.dOmega = dOmega_rad(pnt.dS, pnt.cos_sig, pnt.D)
+                pnt.B_int = pnt.B_Omega * pnt.dOmega
+                self.surf += pnt.dS
+                if not(pnt.cos_sig < 0.0):
+                    self.surf_real += pnt.dOmega
+                    self.B_real += pnt.B_int
         self.surf /= l_phi
         self.R_pr = sqrt(self.surf)
 
-        self.Lum = np.sum(self.B_real*self.dE[0,0,:])
+        self.Lum = np.sum(self.B_real*self.dE)
 
         self.lum = 4.0 * PI * self.Lum / self.NS.Lum_obs
 
-        self.E_null = self.E[0,0,:]
+        self.w, self.fc = w_fc_rad(self.NS.surf_0, self.NS.Epsilon_eff, self.E, self.B_real)
 
-        self.w, self.fc = w_fc_rad(self.NS.surf_0, self.NS.Epsilon_eff, self.E_null, self.B_real)
-
-class NeurtonStarNew:
+class NeurtonStar(Star):
     def __init__(self, name="J0000+0000", sys="base", chem="s1",rel=False, 
                  w_key="null", fc_key=1, flux_key=1,
-                 r_ns=12.0, m_ns=1.5, v_rot=700.0, i_ang=60.0, lum=0.1):
+                 r_ns=12, m_ns=1.5, v_rot=700.0, i_ang=60.0, lum=0.1):
         # key parameters
         self.name = name
         self.sys = sys
@@ -146,9 +124,6 @@ class NeurtonStarNew:
             self.r, self.m = r_ns, m_ns
             self.r_eq, self.m_cor = 0.0, 0.0
 
-        self.R = R_NS(self.r, self.m)
-        self.M = M_NS(self.m)
-
         # model of surface
         self.R_func = R_metric
 
@@ -165,31 +140,10 @@ class NeurtonStarNew:
             "chem": self.chem,
         }
 
-        self.NS_Keys =  np.array([
-            self.name,
-            self.sys,
-            self.chem,
-            self.rel,
-            self.w_key,
-            self.fc_key,
-            self.flux_key,
-        ], dtype = mychar)
-
-        self.NS_Init = np.array([
-            self.r_ns,
-            self.m_ns,
-            self.v_rot,
-            self.i_ang,
-            self.lum,
-            self.r, 
-            self.m,
-            self.R,
-            self.M,
-        ], dtype=myfloat)
-        
-
     def init_paramters(self):
         # phisical
+        self.R = R_NS(self.r, self.m)
+        self.M = M_NS(self.m_ns)
         ### ВОПРОС ПРО НЕСКОРРЕКТИРОВАННЫЙ РАДИУС ШВРАЦШИЛЬДА
         self.R_sch = R_sch(self.M)
         self.zsch = zsch(self.R, self.R_sch)
@@ -216,7 +170,7 @@ class NeurtonStarNew:
         self.incl_ang = self.i_ang * RAD
         self.sin_i = sin(self.incl_ang)
         self.cos_i = cos(self.incl_ang)
-        self.omega_rot = omega(self.nu_rot)   
+        self.omega_rot = omega(self.nu_rot)
 
         # relativical
         self.v_cr = nu_crit(self.r, self.m)
@@ -235,35 +189,32 @@ class NeurtonStarNew:
         self.J = J_NS(self.I, self.omega_rot)
         self.g_0 = g_0_metric(self.R_eq, self.M_cor, self.chi)
 
-        
         # radiational
         self.flux = self.lum
         self.Flux = self.flux * self.Flux_edd
         self.T_eff = T_SB(self.Flux)
         self.Epsilon_eff = Epsilon(T_obs(self.Flux, self.zsch))
 
+        self.Surface = NS_Surface(self, self.r_eq, r_func=self.R_func)
 
-    def init_grid(self, size, rng, unnull=True):
-        ph_range, th_range, nu_range = rng
-        N_ph, N_th, N_nu = size
+    def init_grid(self, n_phi=10, n_theta=10, n_nu=10, rng_phi=(0, 360), rng_theta=(0, 180), rng_erg=(0.1, 50.0), unnull=True):
+        self.Surface.E, self.Surface.dE = E_base(n_nu, rng_erg)
+        self.Surface.B_real = np.array([0.0]*n_nu)
+        self.Surface.E_size = n_nu
+        self.Size = (n_phi, n_theta, n_nu)
 
-        if unnull:
-            dphi =  (ph_range[1] - ph_range[0]) / (N_ph)
-            dtheta = (th_range[1] - th_range[0]) / (N_th)
-            ph_range = (ph_range[0] + dphi/2, ph_range[1] - dphi/2)
-            th_range = (th_range[0] + dtheta/2, th_range[1] - dtheta/2)
-        rng = ph_range, th_range, nu_range
+        super().init_grid(n_phi, n_theta, rng_phi, rng_theta, unnull)
 
-        self.Surface = NS_SurfaceNew(self, size, rng)
+    def integrate(self):
+        self.Surface.integrate()
 
+    def calc(self, n_phi=10, n_theta=10, n_nu=10, rng_phi=(0, 360), rng_theta=(0, 180), rng_erg=(0.1, 50.0), unnull=True):
+        self.init_paramters()
+        self.init_grid(n_phi, n_theta, n_nu, rng_phi, rng_theta, rng_erg, unnull)
+        self.integrate()
         self.E, self.dE, self.B_real = self.Surface.E, self.Surface.dE, self.Surface.B_real
         self.Lum, self.lum = self.Surface.Lum, self.Surface.lum
         self.w, self.fc = self.Surface.w, self.Surface.fc
         self.surf, self.surf_real = self.Surface.surf, self.Surface.surf_real
         self.R_pr = self.Surface.R_pr
 
-    def calc(self, n_phi=10, n_theta=10, n_nu=10, rng_phi=(0, 360), rng_theta=(0, 180), rng_erg=(0.1, 50.0), unnull=True):
-        self.init_paramters()
-        rng = rng_phi, rng_theta, rng_erg
-        size = n_phi, n_theta, n_nu
-        self.init_grid(size, rng, unnull=unnull)

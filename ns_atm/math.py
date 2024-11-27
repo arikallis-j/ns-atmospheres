@@ -285,6 +285,7 @@ def map1(X, F, Y):
     X = np.array(X)
     F = np.array(F)
     Y = np.array(Y)
+    #print(X.shape, F.shape, Y.shape)
 
     l_shape = X.shape[0]
     p_shape = F.shape[1]
@@ -364,66 +365,108 @@ def map1(X, F, Y):
         R[j] = a + (b + c * Y[j]) * Y[j]
         #ic(R[j])
     return R.reshape(p_shape, g_shape_a, g_shape_b)
-   
+
 
 def map2(X, F, Y):
-    # Приводим массивы к нужным формам для векторных вычислений
-    X = np.array(X)  # X имеет размер (L,)
-    F = np.array(F)  # F имеет размер (L, P, A, B)
-    Y = np.array(Y)  # Y имеет размер (A, B)
-    
-    # Получаем размеры массивов
+    X = np.array(X)
+    F = np.array(F)
+    Y = np.array(Y)
+    #print(X.shape, F.shape, Y.shape)
+
     l_shape = X.shape[0]
     p_shape = F.shape[1]
-    g_shape_a, g_shape_b = Y.shape
+    g_shape_a = Y.shape[0]
+    g_shape_b = Y.shape[1]
 
-    # Векторизуем X и F для соответствия размерности (L, P * A * B)
-    X = np.tile(X[:, None], (1, p_shape * g_shape_a * g_shape_b))
-    F = F.reshape((l_shape, p_shape * g_shape_a * g_shape_b))
-    Y = Y.flatten()  # Преобразуем Y в одномерный массив для удобства
+    X = np.full((g_shape_b, g_shape_a, p_shape, l_shape), X.T).T.reshape((l_shape, -1))
+    Y = np.full((p_shape, g_shape_a, g_shape_b), Y)
+
+    F = F.reshape((l_shape, -1))
     
-    # Инициализация для результата
-    R = np.zeros_like(Y, dtype=float)  # Итоговый результат, который будем заполнять
+    Y = Y.ravel()
+
+    d_shape = F[0,:].shape
+
+    R = np.zeros(d_shape)
+
+    N = l_shape - 1
+
+    a, b, c, d = np.zeros(d_shape), np.zeros(d_shape), np.zeros(d_shape), np.zeros(d_shape)
+
+    cp, bp, ap = np.zeros(d_shape), np.zeros(d_shape), np.zeros(d_shape)
+    cm, bm, am = np.zeros(d_shape), np.zeros(d_shape), np.zeros(d_shape)
+
+    x2, x1, x0 = np.full(d_shape, 2.0), np.full(d_shape, 1.0), np.full(d_shape, 0.0)
+    f2, f1, f0 = np.full(d_shape, 2.0), np.full(d_shape, 1.0), np.full(d_shape, 0.0)
+
+    j = np.arange(d_shape[0])
+    l = np.full(d_shape, 1)
+
+    mask_cycle = (l < N) & (Y >= X[l, j])
+
+    while mask_cycle.any():
+        l = np.where(mask_cycle, l + 1, l)
+        mask_cycle = (l < N) & (Y >= X[l, j])
+
+
+    # Краевой случай для l == 1 or l == N
+    mask_board = (l == 1) | (l == N)
+    l = np.where(mask_board, np.minimum(N - 1, l), l)
+
+    x1 = np.where(mask_board, X[l, j], x1)
+    x0 = np.where(mask_board, X[l-1, j], x0)
+    f1 = np.where(mask_board, F[l, j], f1)
+    f0 = np.where(mask_board, F[l-1, j], f0)
+
+    c = np.where(mask_board, 0.0, c)
+    b = np.where(mask_board, (f1 - f0) / (x1 - x0), b)
+    a = np.where(mask_board, f1 - x1 * b  , a)
+
+    # Основная квадратичная интерполяция
+    mask_main = ~mask_board
     
-    # Вспомогательные массивы для коэффициентов
-    a = np.zeros_like(Y, dtype=float)
-    b = np.zeros_like(Y, dtype=float)
-    c = np.zeros_like(Y, dtype=float)
+    x2 = np.where(mask_main, X[l,j], x2)
+    x1 = np.where(mask_main, X[l-1,j], x1)
+    x0 = np.where(mask_main, X[l-2,j], x0)
 
-    # Создаем массивы для хранения промежуточных данных
-    L = np.searchsorted(X[:, 0], Y, side='right')  # Индексы интерполяции для каждого Y
-    
-    # Логические маски для разных случаев
-    mask1 = (L >= l_shape) | (L < 2)
-    mask2 = (L == 2) | (L == l_shape - 1)
-    mask3 = ~mask1 & ~mask2  # Общий случай для квадратичной интерполяции
+    f2 = np.where(mask_main, F[l,j], f2)
+    f1 = np.where(mask_main, F[l-1,j], f1)
+    f0 = np.where(mask_main, F[l-2,j], f0)
 
-    # Граничный случай: линейная интерполяция для крайних точек
-    a[mask1] = F[L[mask1] - 1]
-    b[mask1] = (F[L[mask1]] - F[L[mask1] - 1]) / (X[L[mask1]] - X[L[mask1] - 1])
-    c[mask1] = 0.0
+    d = np.where(mask_main, (f1 - f0) / (x1 - x0), d)
+    c = np.where(mask_main, (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0), c)
+    b = np.where(mask_main,  d - (x1 + x0) * c, b) 
+    a = np.where(mask_main, f0 - x0 * d + x1 * x0 * c, a) 
 
-    # Квадратичная интерполяция для основного случая
-    d = (F[L - 1] - F[L - 2]) / (X[L - 1] - X[L - 2])
-    cbac = F[L] / ((X[L] - X[L - 1]) * (X[L] - X[L - 2])) + \
-           (F[L - 2] / (X[L] - X[L - 2]) - F[L - 1] / (X[L] - X[L - 1])) / (X[L - 1] - X[L - 2])
-    bbac = d - (X[L - 1] + X[L - 2]) * cbac
-    abac = F[L - 2] - X[L - 2] * d + X[L - 1] * X[L - 2] * cbac
 
-    # Вторая часть: интерполяция c использованием ближайших значений
-    afor = F[L - 1] - X[L - 1] * d + X[L] * X[L - 1] * cbac
-    bfor = d - (X[L] + X[L - 1]) * cbac
-    cfor = F[L + 1] / ((X[L + 1] - X[L]) * (X[L + 1] - X[L - 1])) + \
-           (F[L - 1] / (X[L + 1] - X[L - 1]) - F[L] / (X[L + 1] - X[L])) / (X[L] - X[L - 1])
+    cm, bm, am = c, b, a
 
-    # Расчет весов и итоговых коэффициентов
-    wt = np.abs(cfor) / (np.abs(cfor) + np.abs(cbac))
-    a[mask3] = afor + wt * (abac - afor)
-    b[mask3] = bfor + wt * (bbac - bfor)
-    c[mask3] = cfor + wt * (cbac - cfor)
+    # Дополнительная квадратичная интерполяция, если не (почти) краевой случай
+    mask_center = mask_main & (l != N - 1)
 
-    # Итоговая интерполяция
-    R = a + b * Y + c * Y**2
-    
-    # Возвращаем результат в нужной форме
-    return R.reshape((p_shape, g_shape_a, g_shape_b))
+    x2 = np.where(mask_center, X[l+1,j], x2)
+    x1 = np.where(mask_center, X[l,j], x1)
+    x0 = np.where(mask_center, X[l-1,j], x0)
+
+    f2 = np.where(mask_center, F[l+1,j], f2)
+    f1 = np.where(mask_center, F[l,j], f1)
+    f0 = np.where(mask_center, F[l-1,j], f0)
+
+    d = np.where(mask_center, (f1 - f0) / (x1 - x0), d)
+    c = np.where(mask_center, (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0), c)
+    b = np.where(mask_center,  d - (x1 + x0) * c, b) 
+    a = np.where(mask_center, f0 - x0 * d + x1 * x0 * c, a) 
+
+    cp, bp, ap = c, b, a
+    determinator = np.where(np.abs(cp) != 0, np.abs(cp) + np.abs(cm), 1.0)
+    wt = np.where(np.abs(cp) != 0, np.abs(cp) / determinator, 0.0)
+    wt = np.where(mask_center, wt, 0.0)
+
+
+    a = np.where(mask_center, ap + wt * (am - ap), a)
+    b = np.where(mask_center, bp + wt * (bm - bp), b)
+    c = np.where(mask_center, cp + wt * (cm - cp), c)
+
+    R = a + (b + c * Y) * Y
+
+    return R.reshape(p_shape, g_shape_a, g_shape_b)

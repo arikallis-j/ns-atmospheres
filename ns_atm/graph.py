@@ -154,7 +154,7 @@ BasePalette = GraphPalette(['red', 'blue', 'green'])
 LinePalette = GraphPalette(['black', 'orange', 'violet', 'green', 'blue', 'red'])
 LumPalette = GraphPalette(['black', 'red', 'blue'])
 
-BaseStyle = GraphStyle(BasePalette)
+BaseStyle = GraphStyle(BasePalette, linewidth=2)
 LogStyle = GraphStyle(BasePalette, loglog=True)
 LegendStyle = GraphStyle(LumPalette, legend=True)
 
@@ -191,7 +191,7 @@ DataBaseFig9A = GraphDataBase(
     tex_mode=True,
     latex_labels = (
         "$F(\\theta) = const, Fig.9.a$",
-        "$L(\nu_{\\star}, i) / L_{Edd}(0)$",
+        "$L(\\nu_{\\star}, i) / L_{Edd}(0)$",
         "Colour correction factor $f_c'$"
     ),
     ascii_labels = (
@@ -205,7 +205,7 @@ DataBaseFig9B = GraphDataBase(
     tex_mode=True,
     latex_labels = (
         "$F(\\theta) = const, Fig.9.b$",
-        "$L(\nu_{\\star}, i) / L_{Edd}(0)$",
+        "$L(\\nu_{\\star}, i) / L_{Edd}(0)$",
         "Dilution factor $w'$"
     ),
     ascii_labels = (

@@ -1,6 +1,6 @@
 from time import time
+# from .classes_old import *
 from .classes import *
-from .nstar import *
 from .graph import *
 
 
@@ -55,7 +55,7 @@ class Calculator:
         return f"Building done. "
     
     def init(self, name):
-        NS = NeurtonStar(name)
+        NS = NeurtonStarNew(name=name)
         return f"Initicialisation of NeurtonStar: {NS.name} with n_phi={NS.n_phi}, n_theta={NS.n_theta}"
     
     def calc(self, name):
@@ -63,35 +63,45 @@ class Calculator:
     
     def lfc(self, name="J0000+0000", sys="base", chem="s001", rel=False,
                   fc_key=1, flux_key=1, w_key="null", 
-                  m_ns=1.5, r_ns=13.6, v_rot=700.0,
-                  N=60, M=500):
+                  m_ns=1.5, r_ns=13.16, v_rot=700.0,
+                  N=60, M=500, zsch_key=True):
         m_ns = 1.5
         r_ns = 13.16
         v_rot = 700
         n_phi = 2*N
         n_theta = N
         n_nu = M
+        zsch_key = False
+        rng_erg = (3.0, 20.0)
         SizeA = GraphSize(x_range=(0.0,1.1), y_range=(1.3,1.9),  figsize=(7,6))
         SizeB = GraphSize(x_range=(0.0,1.1), y_range=(0.07,0.27), figsize=(7,6))
         I_arr = [0, 45, 90]
         Fkey_arr = [1, 2]
-        for k in range(1):
+        N_model = N_MODEL
+        for k in range(len(Fkey_arr)):
             flux_key = Fkey_arr[k]
-            for i in range(3):
+            for i in range(len(I_arr)):
                 i_ang = I_arr[i]
                 W_arr, Fc_arr, L_arr = [], [], []
-                for j in range(N_MODEL-1):
+                N_model = N_MODEL
+                for j in range(0, N_model):
                     lum = FLUX_REL[j]
                     NS = NeurtonStarNew(name=name, sys=sys, chem=chem, rel=rel,
                                         fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
-                                        m_ns=m_ns, r_ns=r_ns, v_rot=v_rot, i_ang=i_ang, lum=lum)
+                                        m_ns=m_ns, r_ns=r_ns, v_rot=v_rot, i_ang=i_ang, lum=lum, n_model=N_model)
 
-                    NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu, rng_erg=(3.0, 20.0))
+                    NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu, rng_erg=rng_erg, zsch_key=zsch_key)
+                    N_model = NS.N_model
+                    # if j>=19 and k == 0:
+                    #     continue
+
+                    if (N_model) < N_MODEL:
+                        break
                     w, fc = NS.w, NS.fc
                     W_arr.append(w)
                     Fc_arr.append(fc)
                     L_arr.append(NS.lum)
-                    percent = (k+1)*(i+1)*(j+1)/(2*3*N_MODEL) * 100
+                    percent = (k*3*N_MODEL+i*N_MODEL+(j+1))/(2*3*N_MODEL) * 100
                     print(f"Downloading...{percent:.2f}%: {k+1} graph, {i+1} line, {j+1} ns ")
 
                 data_w = GraphData(L_arr, W_arr, tex_mode=True,
@@ -115,16 +125,31 @@ class Calculator:
             else:
                 Graph_9A = Graph(DataBaseFig9A, SizeA, LegendStyle)
                 Graph_9B = Graph(DataBaseFig9B, SizeB, LegendStyle)
+                Graph_9A.draw_picture(save=True, draw=False) 
+                Graph_9B.draw_picture(save=True, draw=False) 
 
-        Graph_arr = [Graph_8A, Graph_8B] #, Graph_9A, Graph_9B]
+        Graph_arr = [Graph_8A, Graph_8B, Graph_9A, Graph_9B]
         for graph in Graph_arr:
             graph.draw_picture(save=True, draw=False) 
             graph.draw_table() 
 
+        # name = "J0000+0000"
+        # system = "base"
+        # chem = "s1"
+        # rel = False
+        # fc_key = 1 
+        # flux_key = 1
+        # w_key = "null"
 
-            
-        
+        # m_ns = 1.5
+        # r_ns = 12.0
+        # v_rot = 700.0
+        # i_ang = 60.0
+        # lum_0 = 0.1
 
+        # n_phi = 120
+        # n_theta = 60
+        # n_nu = 500
 
         
         # for k in range(3):
@@ -134,7 +159,7 @@ class Calculator:
         #     NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
         #     Energy = NS.E
         #     Flux = NS.B_real / 10**36
-        #      = GraphData(Energy, Flux, ascii_label=f"i = {I_arr[k]} deg")
+        #     data = GraphData(Energy, Flux, ascii_label=f"i = {I_arr[k]} deg")
         #     g_database.DataBase.append(data)
 
         # Size = GraphSize(x_range=(1,20), y_range=(0.003,0.4))
@@ -170,7 +195,7 @@ class Calculator:
         g_database = GraphDataBase()
         for k in range(6):
             print(f"The {k} iteration...")
-            NS = NeurtonStar(name=name, sys=system, chem=chem, rel=rel,
+            NS = NeurtonStarNew(name=name, sys=system, chem=chem, rel=rel,
                             fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
                             m_ns=m_cor, r_ns=r_eq, v_rot=v_rot, i_ang=I_arr[k], lum=lum_k)
             NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
@@ -205,26 +230,26 @@ class Calculator:
         title="$L/L_{edd} = " + f"{lum_k}$"
         title_ascii = "L/L_{edd} " + f"{lum_k}"
         ylabel_ascii = "L_E, 10^36"
-        # file = "sp_01" #"sp90"
-        # DataBaseOld = [[],[],[],[]]
-        # with open(f'ns_atm/spectra/{file}.dat', 'r') as f:
-        #     for line in f:
-        #         arr_line = line.split(" ")[1::]
-        #         arr_line[-1] = arr_line[-1].split("\n")[0]
-        #         for k in range(len(arr_line)):
-        #             list_line = list(arr_line[k])
-        #             list_norm = ""
-        #             for j in range(len(list_line)):
-        #                 if list_line[j] == 'D':
-        #                     list_norm += 'e'
-        #                 else:
-        #                     list_norm += list_line[j]
+        file = "sp_01" #"sp90"
+        DataBaseOld = [[],[],[],[]]
+        with open(f'ns_atm/spectra/{file}.dat', 'r') as f:
+            for line in f:
+                arr_line = line.split(" ")[1::]
+                arr_line[-1] = arr_line[-1].split("\n")[0]
+                for k in range(len(arr_line)):
+                    list_line = list(arr_line[k])
+                    list_norm = ""
+                    for j in range(len(list_line)):
+                        if list_line[j] == 'D':
+                            list_norm += 'e'
+                        else:
+                            list_norm += list_line[j]
 
-        #             arr_line[k] = list_norm
-        #             arr_line[k] = float(arr_line[k])
-        #             if k!=0:
-        #                 arr_line[k] = arr_line[k]/10**36
-        #             DataBaseOld[k].append(arr_line[k])
+                    arr_line[k] = list_norm
+                    arr_line[k] = float(arr_line[k])
+                    if k!=0:
+                        arr_line[k] = arr_line[k]/10**36
+                    DataBaseOld[k].append(arr_line[k])
         DataBaseOld = []
         for i in range(len(I_arr)):
             data_x, data_y = [], []
@@ -262,7 +287,7 @@ class Calculator:
 
         g_database = GraphDataBase(tex_mode=True, latex_labels=(title, xlabel, ylabel), ascii_labels=(title_ascii, xlabel, ylabel_ascii))
         for k in range(3):
-            NS = NeurtonStar(name=name, sys=system, chem=chem, rel=rel,
+            NS = NeurtonStarNew(name=name, sys=system, chem=chem, rel=rel,
                             fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
                             m_ns=m_cor, r_ns=r_eq, v_rot=v_rot, i_ang=I_arr[k], lum=lum_k)
             NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
@@ -278,7 +303,7 @@ class Calculator:
 
         g_database = GraphDataBase(tex_mode=True, filename="diff")
         for k in range(3):
-            NS = NeurtonStar(name=name, sys=system, chem=chem, rel=rel,
+            NS = NeurtonStarNew(name=name, sys=system, chem=chem, rel=rel,
                             fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
                             m_ns=m_cor, r_ns=r_eq, v_rot=v_rot, i_ang=I_arr[k], lum=lum_k)
             NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
@@ -322,13 +347,18 @@ class Calculator:
                      fc_key=1, flux_key=1, w_key="null", 
                      m_ns=1.5, r_ns=12.0, v_rot=700.0, i_ang=60.0,
                      n_phi=120, n_theta=60, n_nu=500):
-        for k in range(0, N_MODEL):
+        N_model = N_MODEL
+        for k in range(0, N_model):
             lum_k = FLUX_REL[k]
             NS = NeurtonStarNew(name=name, sys=sys, chem=chem, rel=rel,
                                 fc_key=fc_key, flux_key=flux_key, w_key=w_key, 
                                 m_ns=m_ns, r_ns=r_ns, v_rot=v_rot, i_ang=i_ang, lum=lum_k)
 
             NS.calc(n_phi=n_phi, n_theta=n_theta, n_nu=n_nu)
+            
+            N_model = NS.N_model
+            if N_model<N_MODEL:
+                break
             if k==0:
                 print("\n  surf/R_eq^2     rpr             R_eq:")
                 print(f"  {sci(NS.surf / NS.R_eq**2, ndig=6)}     {sci(NS.R_pr, ndig=6)}     {sci(NS.R_eq, ndig=6)}")

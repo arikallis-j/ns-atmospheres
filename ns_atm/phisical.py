@@ -215,20 +215,18 @@ def T_flux_eff(key_l, flux_NS, T_eff_NS, Flux_edd_NS, N_model):
 def wwf_tcf_T(T_c, w_b, flux_i, log_g, N_model):
     T_c = np.array(T_c)
     w_b = np.array(w_b)
-    print(flux_i)
 
     T_c = np.tile(T_c[:, :, None, None], (1, 1, *log_g.shape))
     w_b = np.tile(w_b[:, :, None, None], (1, 1, *log_g.shape))
 
-    T_g = map1(FLUX_REL, T_c, flux_i)  # Предполагаем, что map1 возвращает пару значений      
-    w_g = map1(FLUX_REL, w_b, flux_i)  # Аналогичное предположение для вывода функции map1\
-    
+    T_g = map2(FLUX_REL, T_c, flux_i)  # Предполагаем, что map1 возвращает пару значений      
+    w_g = map2(FLUX_REL, w_b, flux_i)  # Аналогичное предположение для вывода функции map1\
 
     T_g = np.tile(T_g[:, None, :, :], (1, 1, 1, 1))
     w_g = np.tile(w_g[:, None, :, :], (1, 1, 1, 1))
 
-    T_f = map1(LOG_G, T_g, log_g)
-    w_f = map1(LOG_G, w_g, log_g)
+    T_f = map2(LOG_G, T_g, log_g)
+    w_f = map2(LOG_G, w_g, log_g)
 
     T_f = T_f.reshape(log_g.shape)
     w_f = w_f.reshape(log_g.shape)

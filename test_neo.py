@@ -1,7 +1,7 @@
 import unittest
 
-from ns_atm.classes import *
-from ns_atm.nstar import *
+from ns_atm.classes_old import *
+from ns_atm.classes_old import *
 
 # python3 -m unittest test_neo
 
