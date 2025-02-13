@@ -1,0 +1,12 @@
+name: 'J0000+0000'
+
+fc_key : 1
+flux_key : 1
+spec_key: 'wfc'
+chem : 's1'
+rel: False
+
+r_ns: 12.0
+m_ns: 1.5
+v_rot: 700.0
+i_ang: 60.0

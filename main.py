@@ -1,17 +1,29 @@
-import sys, fire
+from atmons import *
 
-from ns_atm.interface import *
+config, grid =  loader()
 
-def guide():
-  print("This is guide.")
-  
-def main():
-    if len(sys.argv) == 1:
-        guide()
-    else:
-        calculator = Calculator()
-        fire.Fire(calculator)
+# config['spec_key'] = 'be'
+config['spec_key'] = 'wfc'
+grid['n_nu'] = 300
+grid['n_theta'] = 48
+grid['n_phi'] = 96
 
-if __name__ == "__main__":
-    main()
-    
+dumper('paper', config, grid)
+config, grid = loader("paper")
+
+
+NS = NeurtonStar(config, grid)
+
+burst = NS.burst()
+counter = 1
+Lum = []
+import matplotlib.pyplot as plt
+
+for shot in burst:
+    print(f"{counter} | {shot.lum}")
+    plt.plot(log(shot.E_null), log(shot.B_real) - 36,)
+    counter += 1
+    if counter>1:
+        break
+
+plt.show()

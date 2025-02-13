@@ -1,0 +1,11 @@
+n_phi: 120
+n_theta: 60
+n_nu: 500
+
+rng_phi: [0, 360]
+rng_theta: [0, 180]
+rng_erg: [0.1, 50.0]
+
+unnull: True
+zsch_key: False
+ 
