@@ -3,149 +3,6 @@ from scipy.interpolate import interp1d
 from icecream import ic
 from .const import *
 
-def R_const(r_0: float, phi: float, theta: float, star: object) -> float:
-    """Return constant radius."""
-    return r_0
-
-class Point:
-    """
-    Class representing a point on the star's surface.
-    par: phi, theta
-    opt: r, r_pt[r_func, args]
-    """
-    def __init__(self, sphere: object, coord: tuple[int, int], phi: float, theta: float, r_0: float = 1.0, r_func: callable = R_const):
-        self.th, self.ph = coord
-        self.sphere = sphere
-        self.phi = phi * RAD
-        self.theta = theta * RAD
-        self.r_func = r_func
-        self.r_0, self.R_0 = r_0, r_0 * KM 
-
-        self.r = self.r_func(r_0, self.phi, self.theta, self.sphere)
-        self.R = self.r * KM
-
-    def __str__(self) -> str:
-        phi_0 = round(self.phi * DEG, 1)
-        theta_0 = round(self.theta * DEG, 1)
-        r_0 = round(self.r, 1)
-        return str((phi_0, theta_0, r_0))
-
-    def get_par(self, par: str) -> float:
-        dict_coord = {
-            "r": self.R,
-            "phi": self.phi,
-            "theta": self.theta,
-        }
-        return dict_coord[par]
- 
-class Surface:
-    """
-    Class of point
-    par: PointClass
-    opt: r, r_pt[r_func, args]
-    """
-    def __init__(self, sphere, PointClass, r=1.0, r_func=R_const):
-        self.sphere = sphere
-        self.Point = PointClass
-        self.size = (0, 0)
-        self.ranges = ((0.0, 0.0), (0.0, 0.0))
-        self.Phi, self.Theta = [], []
-
-        self.Grid = []
-        self.r, self.r_func = r, r_func
-        self.R = r * KM
-        self.is_filled = False
-
-    def __str__(self):
-        grid_str = ""
-        n_phi, n_theta = self.size
-        for th in range(n_theta):
-            for ph in range(n_phi):
-                pnt = self.get_point(th, ph)
-                grid_str += f"{pnt} "
-            grid_str += "\n"
-        return grid_str
-
-    def add_point(self, phi, theta, coord = (0, 0), is_filling = False):
-        if self.is_filled:
-            self.clear()
-        if is_filling:
-            th, ph = coord
-        else:
-            th, ph = len(self.Grid), 0
-        r, r_func = self.r, self.r_func
-        self.Grid.append(self.Point(self.sphere, coord, phi, theta, r, r_func))
-
-    def get_point(self, th, ph):
-        if self.is_filled:
-            n_phi, n_theta = self.size
-            k = th*n_phi + ph
-            pnt = self.Grid[k]
-            return pnt
-        else:
-            raise IndexError("The Grid is not filled")
-
-    def clear(self):
-        self.Grid = []
-        self.is_filled = False
-
-    def fill(self, size=(10, 10), ranges=((0, 360), (0, 180))):
-        self.clear()
-        self.size = size
-        
-        n_phi, n_theta = size
-        ph_min, ph_max = ranges[0]
-        th_min, th_max = ranges[1]
-
-        for th in range(n_theta):
-            for ph in range(n_phi):
-                phi = ph_min + ph/(n_phi-1) * (ph_max - ph_min)
-                theta = th_min + th/(n_theta-1) * (th_max - th_min)
-                self.add_point(phi, theta, coord=(th, ph), is_filling=True)
-                if ph==0:
-                    self.Theta.append(theta * RAD)
-                if th==0:
-                    self.Phi.append(phi * RAD)
-        self.is_filled = True
-        self.ranges = ((ph_min * RAD, ph_max * RAD), (th_min * RAD, th_max * RAD))
-        
-class Star:
-    """
-    Class of star
-    par: name
-    opt: r
-    """
-    def __init__(self, name, r=12):
-        self.name = name
-        self.r, self.R = r, r * KM
-        self.R_func = R_const
-        self.args_pnt = ()
-        self.Surface = Surface(self, Point, self.r, r_func=self.R_func)
-
-        self.par = {
-            "name": self.name,
-            "r": self.r,
-        }
- 
-    def init_grid(self, n_phi=10, n_theta=10, rng_phi=(0.0, 360.0), rng_theta=(0.0, 180.0), unnull=True):
-        if unnull:
-            dphi =  (rng_phi[1] - rng_phi[0]) / (n_phi)
-            dtheta = (rng_theta[1] - rng_theta[0]) / (n_theta)
-            rng_phi = (rng_phi[0] + dphi/2, rng_phi[1] - dphi/2)
-            rng_theta = (rng_theta[0] + dtheta/2, rng_theta[1] - dtheta/2)
-
-        self.Surface.fill(size=(n_phi, n_theta), ranges=(rng_phi, rng_theta))
-    
-    def init_point(self, phi=0.0, theta=0.0):
-        self.Surface.add_point(phi, theta)
-
-    def __str__(self):
-        sphere_str = "Star with:\n"
-        for key in self.par:
-            value = self.par[key]
-            sphere_str += f"{key} = {value} \n"
-        return sphere_str
-
 def sqrt(x):
     return np.sqrt(x)
 
@@ -214,8 +71,9 @@ def hs(x):
     return np.heaviside(x)
 
 def inverse(f, y0, args=(), pw=5, base=0.0):
-    eps = 10.0**(-pw)
-    h = 1.0
+    eps = 10.0**(-pw) * y0.unit
+    h = 1.0 * y0.unit
+    base *= y0.unit
     x0, x1, x2 = base, base, base
     while abs(f(x0,*args) - y0) > (eps):
         x2 = x1 + h
@@ -224,7 +82,7 @@ def inverse(f, y0, args=(), pw=5, base=0.0):
         elif f(x2,*args)<y0:
             x1 = x2
         x0 = (x1 + x2)/2
-    return round(x0, pw-1)
+    return round(x0.value, pw-1) * x0.unit
 
 #оригинальная функция map1 с переводом на Python
 def map0(xold, fold, xnew):

@@ -1,28 +1,37 @@
 """
 Description of program constants
 """
+import numpy as np
+import astropy.units as u
+import astropy.constants as astro_const
+
+from astropy.units import Quantity as Q
 from yaml import safe_load
 
-PI = 3.141592653589793
-EULER = 2.718281828459045
+PI = np.pi
+EULER = np.e
+
+DEG = u.deg
+RAD = u.rad
+
+KM = u.km
+CM = u.cm
+M_SUN = u.Msun
+ERG = u.erg
+KEV = u.keV
+cm2g = u.Unit("cm2 g")
+
+
+C_LIGHT = astro_const.c.cgs
+G_GRAV = astro_const.G.cgs
+H_PL = astro_const.h.cgs
+SIGMA_SB = astro_const.sigma_sb.cgs
+K_B = astro_const.k_B.cgs
+
 N_MODEL = 23
 N_DIG_ERR = 4
 K_PLANC = 5.06384420694559 # Непонятный фактор
 
-DEG = 180/PI
-RAD = PI/180
-
-M_SUN = 1.991e33
-KM = 1.0e5
-CM = 1.0e-5
-
-C_LIGHT = 2.997925e10
-G_GRAV = 6.67259e-8
-H_PL = 6.62607015e-27
-SIGMA_SB = 5.67051e-5
-K_B = 1.3805e-16
-ERG = 1.602177e-9
-KEV = 1/ERG
 
 FLUX_REL = [0.10, 0.15, 0.20, 0.30,
             0.40, 0.50, 0.55, 0.60,

@@ -10,6 +10,7 @@ from .rotational import *
 from .model import * 
 
 class NeurtonStarConfig:
+    """???"""
     def __init__(self, config):
         self.name = config['name']
 
@@ -34,15 +35,21 @@ class NeurtonStarConfig:
         return self.__dict__
 
 class NeurtonStarParameters:
+    """???"""
     def __init__(self, cfg):
         # M & R | M_cor & R_eq
         if cfg.rel:
-            self.r = inverse(r_eq, cfg.r_ns, (cfg.m_ns, cfg.v_rot), base=1.0, pw=5)
-            self.m = inverse(m_cor, cfg.m_ns, (cfg.r_ns, cfg.v_rot), base=1.0, pw=5)
+            self.r = inverse(r_eq, (cfg.r_ns * KM), ((cfg.m_ns * M_SUN), (cfg.v_rot * u.Hz)), base=1.0, pw=5)
+            self.m = inverse(m_cor, (cfg.m_ns * M_SUN), (cfg.r_ns * KM, cfg.v_rot * u.Hz), base=1.0, pw=5)
             self.r_eq, self.m_cor = cfg.r_ns, cfg.m_ns
         else:
             self.r, self.m = cfg.r_ns, cfg.m_ns
             self.r_eq, self.m_cor = 0.0, 0.0
+
+        self.r <<= KM
+        self.m <<= M_SUN 
+        self.r_eq <<= KM
+        self.m_cor <<= M_SUN
         
         self.R = R_NS(self.r, self.m)
         self.M = M_NS(self.m)
@@ -58,26 +65,26 @@ class NeurtonStarParameters:
         self.R_sch = R_sch(self.M)
         self.zsch = zsch(self.R, self.R_sch)
         self.g = g(self.R, self.M, self.zsch)
-        self.log_g = log(self.g)
+        self.log_g = log(self.g / self.g.unit)
         self.area_0 = Surf(self.R, self.zsch)
 
         # chemical
         self.X_hyd = X_hyd(cfg.chem)
-        self.sigma_T = sigma_T(self.X_hyd)
+        self.kappa_e = kappa_e(self.X_hyd)
         self.w_b = w_b(cfg.chem, cfg.fc_key)
         self.T_c = T_c(cfg.chem, cfg.fc_key)
 
         # photometrical
-        self.Flux_edd = Flux_edd(self.g, self.sigma_T)
+        self.Flux_edd = Flux_edd(self.g, self.kappa_e)
         self.T_edd = T_obs(self.Flux_edd, self.zsch)
         self.Theta_edd = Theta(self.T_edd)
         self.Epsilon_edd = Epsilon(self.T_edd)
         self.Lum_edd = Lumen(self.Flux_edd, self.R)
-        self.Lum_obs = Lumen_obs(self.Lum_edd, self.zsch)
+        self.Lum_obs = Lumen_obs(self.Flux_edd, self.R, self.zsch)
 
         # rotatinal
-        self.nu_rot = cfg.v_rot 
-        self.incl_ang = cfg.i_ang * RAD
+        self.nu_rot = cfg.v_rot * u.Hz
+        self.incl_ang = (cfg.i_ang * u.deg).to(u.rad)
         self.sin_i = sin(self.incl_ang)
         self.cos_i = cos(self.incl_ang)
         self.omega_rot = omega(self.nu_rot)   
@@ -92,8 +99,10 @@ class NeurtonStarParameters:
         self.R_sch_cor = R_sch(self.M_cor)
 
         # metrical
-        self.chi, self.Omega = chi_Omega_metric(self.R_eq, self.M_cor, self.omega_rot)
-        self.q_c, self.b_c = q_b_metric(self.chi, self.Omega)
+        self.chi = chi_metric(self.R_eq, self.M_cor)
+        self.Omega = Omega_metric(self.R_eq, self.M_cor, self.omega_rot)
+        self.q_c = q_c_metric(self.chi, self.Omega)
+        self.b_c = b_c_metric(self.chi, self.Omega)
         self.i_bar = i_bar_metric(self.chi)
         self.I = I_NS(self.i_bar, self.R_eq, self.M_cor)
         self.J = J_NS(self.I, self.omega_rot)
@@ -146,23 +155,38 @@ class NeurtonStarSurface:
 
         if grid.zsch_key:
             nu_range = nu_range[0]*par.zsch, nu_range[1]*par.zsch
+        
+        # dimensionful
+        # ph_range = ph_range[0]*DEG, ph_range[1]*DEG
+        # th_range = th_range[0]*DEG, th_range[1]*DEG
+        # nu_range = nu_range[0]*KEV, nu_range[1]*KEV
 
+        # phisical
         self.r_func = par.R_func
         self.r_0, self.R_0 = par.r_eq, par.R_eq 
-
+    
         self.phi_init = np.full((N_th, N_ph), np.linspace(*ph_range, N_ph)).T
         self.theta_init = np.full((N_ph, N_th), np.linspace(*th_range, N_th))
-        theta_sym = np.where(self.theta_init < 90.0, self.theta_init, 180.0 - self.theta_init) * RAD
-        self.r_init = self.r_func(self.r_0, self.phi_init, theta_sym , par)
-        self.phi = self.phi_init * RAD
-        self.theta = self.theta_init * RAD
-        self.R = self.r_init * KM
+        self.theta_init_sym = np.where(self.theta_init < 90.0, self.theta_init, 180.0 - self.theta_init)
+        
+        # dimensionful   
+        self.phi_init = self.phi_init * DEG
+        self.theta_init = self.theta_init * DEG
+        self.theta_init_sym = self.theta_init_sym * DEG
 
-        self.ph_range = ph_range[0] * RAD, ph_range[1] * RAD
-        self.th_range = th_range[0] * RAD, th_range[1] * RAD
+        self.phi = self.phi_init << RAD
+        self.theta = self.theta_init << RAD
+        self.theta_sym = self.theta_init_sym << RAD
+
+        self.r_init = self.r_func(self.r_0, self.phi, self.theta_sym , par)
+        self.R = self.r_init << CM
+
+        self.ph_range = (ph_range[0]*DEG) << RAD, (ph_range[1] * DEG) << RAD
+        self.th_range = (th_range[0]*DEG) << RAD, (th_range[1] * DEG) << RAD
         self.sin_th, self.cos_th = sin(self.theta), cos(self.theta)
         self.sin_ph, self.cos_ph = sin(self.phi), cos(self.phi)
 
+        # metrical
         self.dR = dR_metric(self.R_0, self.sin_th, self.cos_th, par.chi, par.Omega)   
         self.u = u_metric(self.R, par.R_sch_cor)
         self.r_bar, self.u_bar = r_u_metric(self.R, self.cos_th, par.q_c, par.b_c, par.R_sch_cor)
@@ -177,7 +201,7 @@ class NeurtonStarSurface:
 
         # Gravity
         self.grv = grv_metric(self.theta, self.g_th, par.W, par.w_args, par.g_0)
-        self.log_g = log(self.grv)
+        self.log_g = log(self.grv / self.grv.unit)
 
         # rotational
         self.sin_psi, self.cos_psi = psi_rot(self.sin_th, self.cos_th, self.cos_ph, par.sin_i, par.cos_i)
@@ -194,6 +218,10 @@ class NeurtonStarSurface:
         E, dE = E_base(N_nu, nu_range)
         self.E = np.full((N_ph, N_th, N_nu), np.array(E))
         self.dE = np.full((N_ph, N_th, N_nu), np.array(dE))
+        
+        # dimensionful   
+        self.E = self.E * KEV
+        self.dE = self.dE * KEV
 
         self.nu_E = np.full((N_nu, N_th, N_ph), self.nu.T).T
         self.delta_E = np.full((N_nu, N_th, N_ph), self.delta.T).T
@@ -207,13 +235,14 @@ class NeurtonStarSurface:
         self.dS = dS_metric_1(self.theta, self.cos_eta, self.R, N_ph, N_th, self.ph_range, self.th_range)
         self.area = np.sum(self.dS)
         
-        ph_min, ph_max = grid.rng_phi
-        l_phi = ph_max - ph_min
+        ph_min, ph_max = self.ph_range
+        l_phi = (ph_max - ph_min)
 
-        self.R_pr = sqrt(self.area / l_phi)
+        self.R_pr = sqrt(self.area / (l_phi / RAD))
         
         self.dOmega = dOmega_rad(self.dS, self.cos_sig, self.D)
-        self.dOmega_E = np.full((N_nu, N_th, N_ph), self.dOmega.T).T
+        self.dOmega_E = np.full((N_nu, N_th, N_ph), self.dOmega.T).T 
+        self.dOmega_E <<= self.dOmega.unit
 
     def __str__(self):
         # TODO: more fancy output
@@ -226,11 +255,11 @@ class NeurtonStarShot:
     def __init__(self, lum, n_model, cfg, par, grid, surf):
         # radiational
         self.n_model = n_model
-        self.flux = lum
+        self.flux = lum * u.Unit()
         self.Flux = self.flux * par.Flux_edd
         self.T_eff = T_SB(self.Flux)
         self.Epsilon_eff = Epsilon(T_obs(self.Flux, par.zsch))
-        self.Flux_edd_real = Flux_edd(surf.grv, par.sigma_T)
+        self.Flux_edd_real = Flux_edd(surf.grv, par.kappa_e)
         self.flux, self.T_eff, self.n_model = T_flux_eff(cfg.flux_key, self.flux, self.T_eff, self.Flux_edd_real, self.n_model)
         self.wwf_T, self.tcf_T = wwf_tcf_T(par.T_c, par.w_b, self.flux, surf.log_g)
         
@@ -238,19 +267,9 @@ class NeurtonStarShot:
         self.tcf_T_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), self.tcf_T.T).T
         self.wwf_T_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), self.wwf_T.T).T
 
-        # self.rho = rho_rad(surf.E_real, self.tcf_T_E, self.wwf_T_E, spectrum="planc")
-        # # print("rho\n",self.rho.mean(axis=2))
-        # self.I_e = I_e_rad(self.rho, surf.cos_sig_1_E)
-        # # print("I_e\n",self.I_e.mean(axis=2))
-        # self.B_Omega = B_Omega_rad(self.I_e, surf.kappa_E)
-        # # print("B_Omega\n",self.B_Omega.mean(axis=2))
-        # # integration
-        # if cfg.spec_key == 'wfc':
-        #     self.B_int = self.B_Omega * surf.dOmega_E
-        # elif cfg.spec_key == 'be':
-        #     self.B_int = B_inter(self.flux, surf.log_g, surf.E, cfg.chem)
-        # print("B_int\n",self.B_int.mean(axis=2))
-        
+        self.tcf_T_E <<= self.tcf_T.unit
+        self.wwf_T_E <<= self.wwf_T.unit
+
         if cfg.spec_key == 'wfc':
             self.rho = rho_rad(surf.E_real, self.tcf_T_E, self.wwf_T_E, spectrum="planc")
         elif cfg.spec_key == 'be':
@@ -271,8 +290,8 @@ class NeurtonStarShot:
 
         self.cos_sig_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), surf.cos_sig.T).T
         self.B_int_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))
-        self.B_real = np.sum(self.B_int_real, axis=(0,1))
-        #print("B_real\n",self.B_real)
+        self.B_real = np.sum(self.B_int_real, axis=(0,1)) 
+        # #print("B_real\n",self.B_real)
 
         self.Lum = 4.0 * PI * np.sum(self.B_real * surf.dE[0,0,:])
         self.lum = self.Lum / par.Lum_obs

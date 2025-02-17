@@ -2,24 +2,35 @@ from .phisical import *
 
 # for Neutron Star 
 
-def chi_Omega_metric(R: float, M: float, omega_rot: float) -> tuple[float, float]:
-    """Calculate chi and Omega for the neutron star metric."""
-    chi = G_GRAV * M / (R * C_LIGHT**2) #dze (II.eq.A.1)
-    Omega = omega_rot * sqrt(R**3 / (G_GRAV * M)) #epsm (II.eq.A.1)
-    return chi, Omega
+def chi_metric(R: Q[u.cm], M: Q[u.g]) -> Q[1]:
+    """Calculate chi for the neutron star metric (II.eq.A.1))"""
+    chi = G_GRAV * M / (R * C_LIGHT**2) #dze
+    return chi << u.Unit()
 
-def q_b_metric(chi, Omega):
-    q_c = -0.11 * (Omega / chi)**2 #q (II.eq.A.8)
-    b_c = 0.4454 * Omega**2 * chi #bet (II.eq.A.9)
-    return q_c, b_c
+def Omega_metric(R: Q[u.cm], M: Q[u.g], omega_rot: Q[u.s**(-1)]) -> Q[1]:
+    """Calculate Omega for the neutron star metric (II.eq.A.1)"""
+    Omega = omega_rot * sqrt(R**3 / (G_GRAV * M)) #epsm
+    return Omega << u.Unit()
 
-def i_bar_metric(chi):
-    i_m = sqrt(chi) * (1.136 - 2.53 * chi + 5.6 * chi**2) #(II.eq.A.11)
-    return i_m
+def q_c_metric(chi: Q[1], Omega: Q[1]) -> Q[1]:
+    """Calculate q_c for the neutron star metric (II.eq.A.8)"""
+    q_c = -0.11 * (Omega / chi)**2 #q
+    return q_c << u.Unit()
 
-def g_0_metric(R, M, chi):
-    g0 = (G_GRAV * M / R**2) / sqrt(1.0 - 2.0 * chi) # (II.eq.A.15)
-    return g0
+def b_c_metric(chi: Q[1], Omega: Q[1]) -> Q[1]:
+    """Calculate b_c for the neutron star metric (II.eq.A.9)"""
+    b_c = 0.4454 * Omega**2 * chi #bet
+    return b_c << u.Unit()
+
+def i_bar_metric(chi: Q[1]) -> Q[1]:
+    """Calculate i_bar for the neutron star metric (II.eq.A.11)"""
+    i_m = sqrt(chi) * (1.136 - 2.53 * chi + 5.6 * chi**2)
+    return i_m << u.Unit()
+
+def g_0_metric(R: Q[u.cm], M: Q[u.g], chi: Q[1]) -> Q[u.cm / u.s**2]:
+    """Calculate g_0 for the neutron star metric (II.eq.A.15)"""
+    g0 = (G_GRAV * M / R**2) / sqrt(1.0 - 2.0 * chi)
+    return g0 << u.cm / u.s**2
 
 
 # for Neurton Star Radius
@@ -53,7 +64,7 @@ def r_u_metric(R, cos_th, q_c, b_c, R_sch, err=1e-8):
     P2 = P_2(cos_th)
 
     u_mid, r_mid = np.zeros(cos_th.shape), np.zeros(cos_th.shape)
-    r_i, r_bar = np.full(cos_th.shape, R), np.zeros(cos_th.shape)
+    r_i, r_bar = np.full(cos_th.shape, R)*R.unit, np.zeros(cos_th.shape)
 
     converged = np.full(cos_th.shape, False)
     while np.logical_not(converged.all()):
@@ -105,7 +116,7 @@ def gamma_metric(beta):
 
 def beta_ph_metric(R, sin_th, omega_bar, nu):
     beta_ph = R * omega_bar / C_LIGHT * exp(-nu) * sin_th # (II.eq.B.36)
-    return beta_ph
+    return beta_ph << u.Unit()
 
 def g_metric(sin_th, cos_th, chi, Omega):
     cos_th = np.where(cos_th < 0.0, -cos_th, cos_th)
@@ -197,12 +208,12 @@ def dS_metric_1(theta, cos_eta, R, N_ph, N_th, ph_range, th_range):
     theta_p = theta + dtheta
     theta_m = theta - dtheta
 
-    dcos_th = np.where(theta == PI/2 - dtheta/2, (cos(theta_m) + cos(theta_0)) / 2.0 , dcos_th)
-    dcos_th = np.where(theta == PI/2 + dtheta/2, (cos(theta_0) + cos(theta_p)) / 2.0, dcos_th)
-    dcos_th = np.where(theta == PI/2, (abs(cos(theta_m)) + abs(cos(theta_p))) / 2.0, dcos_th)
+    dcos_th = np.where(theta == PI/2*RAD - dtheta/2, (cos(theta_m) + cos(theta_0)) / 2.0 , dcos_th)
+    dcos_th = np.where(theta == PI/2*RAD + dtheta/2, (cos(theta_0) + cos(theta_p)) / 2.0, dcos_th)
+    dcos_th = np.where(theta == PI/2*RAD, (abs(cos(theta_m)) + abs(cos(theta_p))) / 2.0, dcos_th)
     dcos_th = np.where(np.logical_and(theta > th_min, theta < th_max), (cos(theta_m) - cos(theta_p)) / 2.0, dcos_th)
     dcos_th = np.where(theta == th_min, 1.0 - (cos(theta_0) + cos(theta_p)) / 2.0, dcos_th)
     dcos_th = np.where(theta == th_max, 1.0 - (abs(cos(theta_0) + cos(theta_m))) / 2.0, dcos_th)
 
     dS = 1 / cos_eta * R**2 * abs(dcos_th) * dphi
-    return dS
+    return dS / RAD
