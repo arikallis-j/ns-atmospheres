@@ -169,6 +169,39 @@ def E_base(N, range_E):
 
     return E, dE
 
+def E_doppler(E, dE, B_d, E_d, dE_d):
+    grid_a, grid_b, e = E.shape
+    grid_ad, grid_bd, ed = E_d.shape
+    E1 = np.zeros((grid_a, grid_b, e+1)) * E.unit
+    eps = np.zeros((grid_a, grid_b, e)) * B_d.unit * dE_d.unit
+    B = np.zeros((grid_a, grid_b, e)) * B_d.unit 
+
+    E_d1 = np.zeros((grid_ad, grid_bd, ed+1)) * E_d.unit
+    eps_d = np.zeros((grid_ad, grid_bd, ed)) * B_d.unit * dE_d.unit
+    E1[:,:,0] = E[:,:,0]
+    E_d1[:,:,0] = E_d[:,:,0]
+
+    E1[:,:,1:] = E1[:,:,:-1] + dE
+    E_d1[:,:,1:] = E_d1[:,:,:-1]  + dE_d
+    eps_d = B_d * dE_d 
+
+    left_border = (E_d1[:,:,:-1] + dE_d) >= E1[:,:,0:1]
+    right_border = (E_d1[:,:,:-1] + dE_d) <= E1[:,:,1:2]
+    border = left_border & right_border
+    deps_mk = np.where(border, eps_d * ((dE_d - (E1[:,:,0:1] - E_d1[:,:,:-1]))/(dE_d)), eps_d * 0)
+    
+    left_border_in = (E_d1[:,:,:-1]) > E1[:,:,:-1]
+    right_border_in = (E_d1[:,:,:-1]) <= E1[:,:,1:]
+    border_in = left_border_in & right_border_in
+
+    deps_k = np.where(border_in, eps_d * ((dE)/(dE_d) - (E_d1[:,:,:-1] - E1[:,:,:-1])/(dE_d)), eps_d * 0)
+    deps_mk = eps_d - deps_k 
+    eps += deps_k + deps_mk
+
+    B = eps/dE
+
+    return B
+
 def w_b(chem: str, fc_key: int) -> list[list[Q[1]]]:
     """Dilution factor (by the previous fitting)"""
     w_b = [[0.0]*9]

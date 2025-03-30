@@ -1,10 +1,13 @@
 chem: s1
 fc_key: 1
 flux_key: 1
-i_ang: 0
+i_ang: 45
 m_ns: 1.519
 name: J0000+0000
 r_ns: 15.48
 rel: true
 spec_key: wfc
+th_star: 60.0
 v_rot: 700
+w_func: power-n
+w_par: 1.6

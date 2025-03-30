@@ -68,7 +68,7 @@ def dP_4(cos_th, sin_th):
     return 2.5 * (3.0 - 7.0 * cos_th**2) * cos_th * sin_th
 
 def hs(x):
-    return np.heaviside(x)
+    return np.heaviside(x, 1/2)
 
 def inverse(f, y0, args=(), pw=5, base=0.0):
     eps = 10.0**(-pw) * y0.unit

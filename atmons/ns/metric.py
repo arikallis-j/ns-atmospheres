@@ -143,8 +143,8 @@ def g_metric(sin_th, cos_th, chi, Omega):
 
     return g_th
 
-def grv_metric(theta, g_th, W, w_args, g_0):
-    g = g_th * g_0 * (1 - W(theta, w_args)**2)
+def grv_metric(theta, g_th, g_0):
+    g = g_th * g_0 
     return g
 
 def f_theta(R, dR, nu, B, zeta):
