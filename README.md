@@ -4,7 +4,7 @@ Simple python library to work with neutron star's atmospheres
 
 ## Set-up library
 ```bash
-> pip install +githttps://github.com/arikallis-j/ns-atmospheres.git#egg=atmons
+> pip install git+https://github.com/arikallis-j/ns-atmospheres.git#egg=atmons
 ```
 
 ## Crash Tutorial: make own neutron star
