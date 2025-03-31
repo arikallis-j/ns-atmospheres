@@ -14,7 +14,7 @@ setup(
     name="atmons",
     version=version,
     description=description,
-    package_dir={"" : "ns", "": "cli"},
+    package_dir={"ns" : "", "cli": ""},
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/arikallis-j/ns-atmospheres",
