@@ -39,7 +39,7 @@ def W_power_n(theta, psi_max, par):
     W = (1 - (psi/psi_max)**(n)) * hs(1 - psi/psi_max)
     return W
 
-def W_0(theta, psi_max, key_w, par_w):
+def get_w_fun():
     W_fun = {
         'const': W_const,
         'sqrt': W_sqrt,
@@ -47,6 +47,10 @@ def W_0(theta, psi_max, key_w, par_w):
         'quadric': W_quadric,
         'power-n':W_power_n,
     }
+    return W_fun
+
+def W_0(theta, psi_max, key_w, par_w):
+    W_fun = get_w_fun()
     return W_fun[key_w](theta, psi_max, par_w)
 
 def G_eff(theta, theta_max, key_w, par_w):

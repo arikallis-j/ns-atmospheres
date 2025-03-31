@@ -1,8 +1,8 @@
 n_nu: 500
-n_phi: 30
-n_theta: 30
+n_phi: 10
+n_theta: 10
 rng_erg:
-- 1.0
+- 0.1
 - 50.0
 rng_phi:
 - 0

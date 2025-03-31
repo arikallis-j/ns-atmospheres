@@ -361,6 +361,7 @@ class NeurtonStar:
         self._init_surface()
 
         self.burst = self._burst
+        self.burster = self._burster
         self.output = self._output()
 
     def __str__(self):
@@ -398,14 +399,12 @@ class NeurtonStar:
     
     def _burster(self):
         shots = []
-        
         for l in range(self.n_model):
             lum = FLUX_REL[l]
             shot = self._shot(lum)
             if self.n_model < N_MODEL:
                 break
             shots.append(shot)
-
         return shots
     
     def _output(self):
