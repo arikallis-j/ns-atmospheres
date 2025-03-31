@@ -32,9 +32,12 @@ class NeurtonStarConfig:
 
     def __str__(self):
         # TODO: more fancy output
-        return str(self._output())
+        return str(self.output())
     
-    def _output(self):
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
 
 class NeurtonStarParameters:
@@ -117,9 +120,12 @@ class NeurtonStarParameters:
 
     def __str__(self):
         # TODO: more fancy output
-        return str(self._output())
+        return str(self.output())
     
-    def _output(self):
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
     
 class GridConfig:
@@ -150,9 +156,12 @@ class GridConfig:
 
     def __str__(self):
         # TODO: more fancy output
-        return str(self._output())
+        return str(self.output())
     
-    def _output(self):
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
 
 class NeurtonStarSurface:
@@ -261,9 +270,12 @@ class NeurtonStarSurface:
 
     def __str__(self):
         # TODO: more fancy output
-        return str(self._output())
+        return str(self.output())
     
-    def _output(self):
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
 
 class NeurtonStarShot:
@@ -344,9 +356,12 @@ class NeurtonStarShot:
 
     def __str__(self):
         # TODO: more fancy output
-        return str(self._output())
+        return str(self.output())
     
-    def _output(self):
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
 
 class NeurtonStar:
@@ -359,6 +374,7 @@ class NeurtonStar:
         self._init_grid(grid)
         self._init_ns()
         self._init_surface()
+        self._init_shot()
 
         self.burst = self._burst
         self.burster = self._burster
@@ -379,6 +395,17 @@ class NeurtonStar:
     
     def _init_surface(self):
         self.surface = NeurtonStarSurface(self.grid, self.param)
+    
+    def _init_shot(self):
+        lum = FLUX_REL[0]
+        self.shot = NeurtonStarShot(lum, 
+            self.n_model, 
+            self.config, 
+            self.param, 
+            self.grid, 
+            self.surface)
+
+        self.n_model = self.shot.n_model
 
     def _shot(self, l):
         lum = FLUX_REL[l]
@@ -407,6 +434,13 @@ class NeurtonStar:
             shots.append(shot)
         return shots
     
-    def _output(self):
+    def __str__(self):
+        # TODO: more fancy output
+        return str(self.output())
+    
+    def __call__(self):
+        return self.output()
+    
+    def output(self):
         return self.__dict__
     
