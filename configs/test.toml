@@ -1,0 +1,29 @@
+[descript]
+name = "test"
+description = "The base config for model test."
+
+[base]
+r_ns = 15.0
+m_ns = 1.6
+v_rot = 700.0
+i_ang = 60.0
+th_star = 0.0
+w_par = [ 0.0,]
+
+[keys]
+spec_key = "wfc"
+fc_key = 1
+flux_key = 1
+chem = "s1"
+rel = false
+w_func = "const"
+
+[grid]
+n_phi = 120
+n_theta = 60
+n_nu = 500
+rng_phi = [ 0, 360,]
+rng_theta = [ 0, 180,]
+rng_erg = [ 0.1, 50.0,]
+unnull = true
+zsch_key = false

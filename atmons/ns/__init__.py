@@ -1,5 +1,5 @@
 __all__ = [
-    'NeurtonStar',
+    'classes',
     'data_load',
     'get_w_fun',
     'const',
@@ -9,16 +9,16 @@ __all__ = [
     'graph',
 ]
 
-from .classes import NeurtonStar
-from .data_load import *
-from .model import get_w_fun
+from .classes import *
+from .src.data_load import *
+from .src.model import get_w_fun
 
-from .const import *
-from .math import *
-from .phisical import *
-from .radiacional import *
+from .src.const import *
+from .src.math import *
+from .src.phisical import *
+from .src.radiacional import *
 
-from .graph import *
+from .src.graph import *
 
 
 

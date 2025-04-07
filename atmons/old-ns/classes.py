@@ -189,7 +189,7 @@ class NeurtonStarSurface:
         self.theta = self.theta_init << RAD
         self.theta_sym = self.theta_init_sym << RAD
 
-        self.r_init = R_metric(self.r_0, self.phi, self.theta_sym , par)
+        self.r_init = self.r_func(self.r_0, self.phi, self.theta_sym , par)
         self.R = self.r_init << CM
 
         self.ph_range = (ph_range[0]*DEG) << RAD, (ph_range[1] * DEG) << RAD

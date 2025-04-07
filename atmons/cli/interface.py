@@ -7,7 +7,7 @@ from time import time
 
 from .experiments import *
 from ..ns.classes import *
-from ..ns.data_load import *
+from ..ns.src.data_load import *
 
 def _guide() -> None:
     """Print a guide message."""
