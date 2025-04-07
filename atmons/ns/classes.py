@@ -324,36 +324,7 @@ class NeurtonStarShot:
         self.E_null = surf.E[0,0,:]
 
         self.w, self.fc = w_fc_rad(par.area_0, self.Epsilon_eff, self.E_null, self.B_real)
-
-        #### Spread layer theory
-
-        if cfg.spec_key == 'wfc':
-            self.rho_eff = rho_rad(surf.E_dop_real, self.tcf_T_E, self.wwf_T_E, spectrum="planc")
-        elif cfg.spec_key == 'be':
-            self.rho_eff = B_inter(self.flux, surf.log_g, surf.E_dop_real, cfg.chem)
         
-        self.I_e_eff = I_e_rad(self.rho_eff, surf.cos_sig_1_E)
-
-        self.B_Omega_eff = B_Omega_rad(self.I_e_eff, surf.kappa_E)
-
-        self.B_int_eff_full = self.B_Omega_eff * surf.G_eff_E * surf.dOmega_E
-        self.flux_eff_full =  4.0 * PI * np.sum(self.B_int_eff_full * surf.dE_dop, axis=2) / par.Lum_obs
-
-        self.lamda_eff = np.sum(self.flux_full, axis=(0,1))/np.sum(self.flux_eff_full, axis=(0,1))
-
-        self.B_int_eff = self.B_Omega_eff * surf.G_eff_E * surf.dOmega_obs_E * self.lamda_eff
-        self.B_int_eff_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int_eff, np.zeros(self.B_int_eff.shape))
-        
-        self.B_eff_real_stand = E_doppler(surf.E, surf.dE, self.B_int_eff_real, surf.E_dop, surf.dE_dop)
-
-        self.B_eff_real = np.sum(self.B_eff_real_stand, axis=(0,1)) 
-        self.flux_eff_real = np.sum(self.B_eff_real_stand * surf.dE, axis=2)
-        self.Lum_eff = 4.0 * PI * np.sum(self.B_eff_real_stand * surf.dE)
-        self.lum_eff = self.Lum_eff / par.Lum_obs
-
-        self.w_eff, self.fc_eff = w_fc_rad(par.area_0, self.Epsilon_eff, self.E_null, self.B_eff_real)
-
-
     def __str__(self):
         # TODO: more fancy output
         return str(self.output())
@@ -378,7 +349,7 @@ class NeurtonStar:
 
         self.burst = self._burst
         self.burster = self._burster
-        self.output = self._output()
+        self.output = self.output()
 
     def __str__(self):
         # TODO: more fancy output
