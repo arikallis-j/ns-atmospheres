@@ -5,8 +5,8 @@ config, grid =  loader()
 # config['spec_key'] = 'be'
 config['spec_key'] = 'wfc'
 grid['n_nu'] = 300
-grid['n_theta'] = 48
-grid['n_phi'] = 96
+grid['n_theta'] = 30
+grid['n_phi'] = 30
 
 dumper('paper', config, grid)
 config, grid = loader("paper")
