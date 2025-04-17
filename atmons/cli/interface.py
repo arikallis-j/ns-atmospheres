@@ -36,14 +36,14 @@ class Calculator:
     def init(self, name="base"):
         """Inicialization of NS-object"""
         cfg, grid = loader(name)
-        ns = NeurtonStar(cfg, grid)
+        ns = NeutronStar(cfg, grid)
         print(ns)
         return "Init is okey"
 
     def origin(self, name="base"):
         """Calculating of NS-burster"""
         cfg, grid = loader(name)
-        ns = NeurtonStar(cfg, grid)
+        ns = NeutronStar(cfg, grid)
         @timer
         @origin_format(ns=ns)
         def burster():

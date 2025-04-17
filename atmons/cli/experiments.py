@@ -1,7 +1,7 @@
-from ..ns.classes import NeurtonStar
+from ..ns.classes import NeutronStar
 
 def lfc(cfg, grid):
-    NS = NeurtonStar(cfg, grid)
+    NS = NeutronStar(cfg, grid)
     lum, fc = [], []
     for shot in NS.burst():
         lum.append(shot.lum)
@@ -9,7 +9,7 @@ def lfc(cfg, grid):
     return lum, fc
 
 def lw(cfg, grid):
-    NS = NeurtonStar(cfg, grid)
+    NS = NeutronStar(cfg, grid)
     lum, w = [], []
     for shot in NS.burst():
         lum.append(shot.lum)
@@ -17,7 +17,7 @@ def lw(cfg, grid):
     return lum, w
 
 def spectra(cfg, grid):
-    NS = NeurtonStar(cfg, grid)
+    NS = NeutronStar(cfg, grid)
     spec, erg = [], []
     for shot in NS.burst():
         spec.append(shot.B_real)

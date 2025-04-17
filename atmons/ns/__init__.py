@@ -1,5 +1,5 @@
 __all__ = [
-    'NeurtonStar',
+    'NeutronStar',
     'data_load',
     'get_w_fun',
     'const',
@@ -9,7 +9,7 @@ __all__ = [
     'graph',
 ]
 
-from .classes import NeurtonStar
+from .classes import NeutronStar
 from .data_load import *
 from .model import get_w_fun
 

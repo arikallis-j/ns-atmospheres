@@ -134,7 +134,6 @@ def g_metric(sin_th, cos_th, chi, Omega):
     d60 = (13.47 - 27.13 * chi) * chi
     f60 = 1.69
 
-    # approximation for the gravity from AlGendy & Morsink 2014
     ee = (ce + (de + fe * Omega2) * Omega2) * Omega2
     ep = (cp + (dp - d60 + (fp - f60) * Omega2) * Omega2) * Omega2
     ep = (cp + (dp - d60 + fp * Omega2) * Omega2) * Omega2

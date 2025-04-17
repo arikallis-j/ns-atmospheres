@@ -20,9 +20,9 @@ setup(
     url="https://github.com/arikallis-j/ns-atmospheres",
     author="Arik Allis",
     author_email="arikallis.j@gmail.com",
-    license="GPL-2.0",
+    license="MIT",
     classifiers=[
-    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "License :: OSI Approved :: MIT License (MIT)",
     "Programming Language :: Python :: 3.10",
     "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha"
@@ -36,6 +36,7 @@ setup(
         "astropy",
         "matplotlib",
         "rich",
+        "fire",
     ],
     python_requires=">=3.8",
 )

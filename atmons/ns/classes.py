@@ -9,7 +9,7 @@ from .radiacional import *
 from .rotational import *       
 from .model import * 
 
-class NeurtonStarConfig:
+class NeutronStarConfig:
     """???"""
     def __init__(self, config):
         self.name = config['name']
@@ -40,7 +40,7 @@ class NeurtonStarConfig:
     def output(self):
         return self.__dict__
 
-class NeurtonStarParameters:
+class NeutronStarParameters:
     """???"""
     def __init__(self, cfg):
         # M & R | M_cor & R_eq
@@ -94,7 +94,7 @@ class NeurtonStarParameters:
         self.incl_ang = (cfg.i_ang * u.deg).to(u.rad)
         self.sin_i = sin(self.incl_ang)
         self.cos_i = cos(self.incl_ang)
-        self.omega_rot = omega(self.nu_rot)   
+        self.omega_rot = omega(self.nu_rot)
 
         # relativical
         self.v_cr = nu_crit(self.r, self.m)
@@ -115,8 +115,9 @@ class NeurtonStarParameters:
         self.J = J_NS(self.I, self.omega_rot)
         self.g_0 = g_0_metric(self.R_eq, self.M_cor, self.chi)
 
-        self.V_kep = np.sqrt(self.g_0 * self.R_eq)
         self.V_rot = self.omega_rot * self.R_eq
+        self.V_kep = np.sqrt(self.g_0 * self.R_eq)
+        self.omega_kep = self.V_kep / self.R_eq
 
     def __str__(self):
         # TODO: more fancy output
@@ -164,7 +165,7 @@ class GridConfig:
     def output(self):
         return self.__dict__
 
-class NeurtonStarSurface:
+class NeutronStarSurface:
     def __init__(self, grid, par):
         ph_range, th_range, nu_range = grid.rng
         N_ph, N_th, N_nu = grid.size
@@ -197,6 +198,12 @@ class NeurtonStarSurface:
         self.sin_th, self.cos_th = sin(self.theta), cos(self.theta)
         self.sin_ph, self.cos_ph = sin(self.phi), cos(self.phi)
 
+        # model
+        self.theta_max = par.th_star * DEG << RAD
+        self.W_model = W_model(self.theta, self.theta_max, par.w_func, par.w_par, par.omega_kep, par.omega_rot)
+        self.omega_model = par.omega_rot * self.W_model
+        self.Omega_model = Omega_metric(par.R_eq, par.M_cor, self.omega_model)
+        
         # metrical
         self.dR = dR_metric(self.R_0, self.sin_th, self.cos_th, par.chi, par.Omega)   
         self.u = u_metric(self.R, par.R_sch_cor)
@@ -204,14 +211,16 @@ class NeurtonStarSurface:
         self.nu, self.B, self.zeta = nu_B_dzeta_metric(self.cos_th, self.u_bar, par.q_c, par.b_c)
         self.omega_bar = omega_bar_metric(self.r_bar, self.u_bar, par.J)
         self.beta_ph = beta_ph_metric(self.R, self.sin_th, self.omega_bar, self.nu)
-        self.g_th = g_metric(self.sin_th, self.cos_th, par.chi, par.Omega)
+        self.g_th = g_metric(self.sin_th, self.cos_th, par.chi, self.Omega_model)
         self.f_th = f_theta(self.R, self.dR, self.nu, self.B, self.zeta)
         self.sin_eta, self.cos_eta = eta_metric(self.f_th)
-        self.beta = beta_metric(self.R, self.sin_th, self.nu, self.omega_bar, par.omega_rot)
+        self.beta = beta_metric(self.R, self.sin_th, self.nu, self.omega_bar, self.omega_model)
         self.gamma = gamma_metric(self.beta)
 
         # Gravity
-        self.grv = grv_metric(self.theta, self.g_th, par.g_0)
+        self.grv_real = grv_metric(self.theta, self.g_th, par.g_0)
+        self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.max(self.grv_real)) * self.grv_real.unit, self.grv_real)
+        self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.min(self.grv)) * self.grv.unit, self.grv)
         self.log_g = log(self.grv / self.grv.unit)
 
         # rotational
@@ -241,6 +250,7 @@ class NeurtonStarSurface:
         self.cos_sig_1_E = np.full((N_nu, N_th, N_ph), self.cos_sig_1.T).T
         self.E_real = E_rad(self.E, self.nu_E, self.delta_E, self.beta_ph_E, self.cos_xi_E)
         self.kappa_E = kappa_E_rad(self.nu_E, self.delta_E, self.beta_ph_E, self.cos_xi_E)
+        self.grv_real_E = np.full((N_nu, N_th, N_ph), self.grv_real.T).T
 
         # integration
         self.dS = dS_metric_1(self.theta, self.cos_eta, self.R, N_ph, N_th, self.ph_range, self.th_range)
@@ -258,16 +268,7 @@ class NeurtonStarSurface:
         self.dOmega = self.dS
         self.dOmega_E = np.full((N_nu, N_th, N_ph), self.dOmega.T).T 
         self.dOmega_E <<= self.dOmega.unit
-
-        self.theta_max = par.th_star * DEG << RAD
-        self.G_eff = G_eff(self.theta, self.theta_max, par.w_func, par.w_par)
-        self.G_eff_E = np.full((N_nu, N_th, N_ph), self.G_eff.T).T 
-        self.Doppler = Doppler(self.theta, self.theta_max, self.phi, par.V_kep, par.V_rot, par.w_func, par.w_par)
-        self.Doppler_E = np.full((N_nu, N_th, N_ph), self.Doppler.T).T 
-        self.E_dop = self.E * self.Doppler_E
-        self.dE_dop = self.dE * self.Doppler_E
-        self.E_dop_real = self.E_real * self.Doppler_E
-
+        
     def __str__(self):
         # TODO: more fancy output
         return str(self.output())
@@ -278,7 +279,7 @@ class NeurtonStarSurface:
     def output(self):
         return self.__dict__
 
-class NeurtonStarShot:
+class NeutronStarShot:
     def __init__(self, lum, n_model, cfg, par, grid, surf):
         # radiational
         self.n_model = n_model
@@ -289,7 +290,7 @@ class NeurtonStarShot:
         self.Flux_edd_real = Flux_edd(surf.grv, par.kappa_e)
         self.flux, self.T_eff, self.n_model = T_flux_eff(cfg.flux_key, self.flux, self.T_eff, self.Flux_edd_real, self.n_model)
         self.wwf_T, self.tcf_T = wwf_tcf_T(par.T_c, par.w_b, self.flux, surf.log_g)
-        
+
         # spectra 
         self.tcf_T_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), self.tcf_T.T).T
         self.wwf_T_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), self.wwf_T.T).T
@@ -303,7 +304,7 @@ class NeurtonStarShot:
             self.rho = B_inter(self.flux, surf.log_g, surf.E_real, cfg.chem)
         
         self.I_e = I_e_rad(self.rho, surf.cos_sig_1_E)
-    
+
         self.B_Omega = B_Omega_rad(self.I_e, surf.kappa_E)
 
         self.B_int = self.B_Omega * surf.dOmega_obs_E
@@ -315,7 +316,8 @@ class NeurtonStarShot:
 
         self.cos_sig_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), surf.cos_sig.T).T
         self.B_int_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))
-        
+        self.B_int_real = np.where(surf.grv_real_E > 0.0, self.B_int_real, np.zeros(self.B_int_real.shape))
+
         self.flux_real = np.sum(self.B_int_real * surf.dE, axis=2)
         self.B_real = np.sum(self.B_int_real, axis=(0,1)) 
         self.Lum = 4.0 * PI * np.sum(self.B_int_real * surf.dE)
@@ -335,9 +337,9 @@ class NeurtonStarShot:
     def output(self):
         return self.__dict__
 
-class NeurtonStar:
+class NeutronStar:
     """
-    Main class of the Neurton Star
+    Main class of the Neutron Star
     """ 
     def __init__(self, config, grid):
         self.n_model = N_MODEL
@@ -356,20 +358,20 @@ class NeurtonStar:
         return str(self._output())
     
     def _init_config(self, config):
-        self.config = NeurtonStarConfig(config)
+        self.config = NeutronStarConfig(config)
 
     def _init_grid(self, grid):
         self.grid = GridConfig(grid)
     
     def _init_ns(self):
-        self.param = NeurtonStarParameters(self.config)
+        self.param = NeutronStarParameters(self.config)
     
     def _init_surface(self):
-        self.surface = NeurtonStarSurface(self.grid, self.param)
+        self.surface = NeutronStarSurface(self.grid, self.param)
     
     def _init_shot(self):
         lum = FLUX_REL[0]
-        self.shot = NeurtonStarShot(lum, 
+        self.shot = NeutronStarShot(lum, 
             self.n_model, 
             self.config, 
             self.param, 
@@ -380,7 +382,7 @@ class NeurtonStar:
 
     def _shot(self, l):
         lum = FLUX_REL[l]
-        self.shot = NeurtonStarShot(lum, self.n_model, 
+        self.shot = NeutronStarShot(lum, self.n_model, 
                                     self.config, 
                                     self.param, 
                                     self.grid, 

@@ -3,7 +3,7 @@ name: 'J0000+0000'
 fc_key : 1
 flux_key : 1
 spec_key: 'wfc'
-w_func: 'const'
+w_func: 'none'
 chem : 's1'
 rel: False
 
