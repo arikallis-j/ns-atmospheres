@@ -166,7 +166,7 @@ class GridConfig:
         return self.__dict__
 
 class NeutronStarSurface:
-    def __init__(self, grid, par):
+    def __init__(self, grid, par, mode='base'):
         ph_range, th_range, nu_range = grid.rng
         N_ph, N_th, N_nu = grid.size
 
@@ -203,6 +203,15 @@ class NeutronStarSurface:
         self.W_model = W_model(self.theta, self.theta_max, par.w_func, par.w_par, par.omega_kep, par.omega_rot)
         self.omega_model = par.omega_rot * self.W_model
         self.Omega_model = Omega_metric(par.R_eq, par.M_cor, self.omega_model)
+
+        if mode=='base':
+            self.W_model = np.ones(self.W_model.shape) * self.W_model.unit
+            self.omega_model = par.omega_rot * self.W_model
+            self.Omega_model = Omega_metric(par.R_eq, par.M_cor, self.omega_model)
+        
+        self.psi = abs(90 * DEG - self.theta) << RAD
+        self.psi_max = self.theta_max
+        self.spread_layer = self.psi <= self.psi_max
         
         # metrical
         self.dR = dR_metric(self.R_0, self.sin_th, self.cos_th, par.chi, par.Omega)   
@@ -251,6 +260,7 @@ class NeutronStarSurface:
         self.E_real = E_rad(self.E, self.nu_E, self.delta_E, self.beta_ph_E, self.cos_xi_E)
         self.kappa_E = kappa_E_rad(self.nu_E, self.delta_E, self.beta_ph_E, self.cos_xi_E)
         self.grv_real_E = np.full((N_nu, N_th, N_ph), self.grv_real.T).T
+        self.spread_layer_E = np.full((N_nu, N_th, N_ph), self.spread_layer.T).T
 
         # integration
         self.dS = dS_metric_1(self.theta, self.cos_eta, self.R, N_ph, N_th, self.ph_range, self.th_range)
@@ -280,7 +290,7 @@ class NeutronStarSurface:
         return self.__dict__
 
 class NeutronStarShot:
-    def __init__(self, lum, n_model, cfg, par, grid, surf):
+    def __init__(self, lum, inter, lambda_lum, n_model, cfg, par, grid, surf):
         # radiational
         self.n_model = n_model
         self.flux = lum * u.Unit()
@@ -298,9 +308,9 @@ class NeutronStarShot:
         self.tcf_T_E <<= self.tcf_T.unit
         self.wwf_T_E <<= self.wwf_T.unit
 
-        if cfg.spec_key == 'wfc':
+        if inter == 'wfc':
             self.rho = rho_rad(surf.E_real, self.tcf_T_E, self.wwf_T_E, spectrum="planc")
-        elif cfg.spec_key == 'be':
+        elif inter == 'be':
             self.rho = B_inter(self.flux, surf.log_g, surf.E_real, cfg.chem)
         
         self.I_e = I_e_rad(self.rho, surf.cos_sig_1_E)
@@ -317,15 +327,24 @@ class NeutronStarShot:
         self.cos_sig_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), surf.cos_sig.T).T
         self.B_int_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))
         self.B_int_real = np.where(surf.grv_real_E > 0.0, self.B_int_real, np.zeros(self.B_int_real.shape))
+        self.B_int_real = np.where(surf.spread_layer_E, self.B_int_real * lambda_lum, self.B_int_real)
+        
+        self.B_int_real_sl = np.where(surf.spread_layer_E, self.B_int_real, self.B_int_real * 0.0)
 
         self.flux_real = np.sum(self.B_int_real * surf.dE, axis=2)
         self.B_real = np.sum(self.B_int_real, axis=(0,1)) 
         self.Lum = 4.0 * PI * np.sum(self.B_int_real * surf.dE)
         self.lum = self.Lum / par.Lum_obs
 
+        self.flux_real_sl = np.sum(self.B_int_real_sl * surf.dE, axis=2)
+        self.B_real_sl = np.sum(self.B_int_real_sl, axis=(0,1)) 
+        self.Lum_sl = 4.0 * PI * np.sum(self.B_int_real_sl * surf.dE)
+        self.lum_sl = self.Lum_sl / par.Lum_obs
+
         self.E_null = surf.E[0,0,:]
 
         self.w, self.fc = w_fc_rad(par.area_0, self.Epsilon_eff, self.E_null, self.B_real)
+        self.lambda_lum = lambda_lum
         
     def __str__(self):
         # TODO: more fancy output
@@ -341,8 +360,9 @@ class NeutronStar:
     """
     Main class of the Neutron Star
     """ 
-    def __init__(self, config, grid):
+    def __init__(self, config, grid, mode=None, inter=None):
         self.n_model = N_MODEL
+        self.lambda_lum = 1.0
         self._init_config(config)
         self._init_grid(grid)
         self._init_ns()
@@ -359,6 +379,8 @@ class NeutronStar:
     
     def _init_config(self, config):
         self.config = NeutronStarConfig(config)
+        self.mode = 'base' if self.config.w_func=='none' else 'model'
+        self.inter = self.config.spec_key
 
     def _init_grid(self, grid):
         self.grid = GridConfig(grid)
@@ -367,11 +389,20 @@ class NeutronStar:
         self.param = NeutronStarParameters(self.config)
     
     def _init_surface(self):
-        self.surface = NeutronStarSurface(self.grid, self.param)
+        self.surface_base = NeutronStarSurface(self.grid, self.param, mode='base')
+        self.surface_model = NeutronStarSurface(self.grid, self.param, mode='model')
+        if self.mode=='base':
+            self.surface = self.surface_base
+        elif self.mode=='model':
+            self.surface = self.surface_model
+        else:
+            print("What type of surface?")
     
     def _init_shot(self):
         lum = FLUX_REL[0]
         self.shot = NeutronStarShot(lum, 
+            self.inter,
+            self.lambda_lum,
             self.n_model, 
             self.config, 
             self.param, 
@@ -380,28 +411,56 @@ class NeutronStar:
 
         self.n_model = self.shot.n_model
 
-    def _shot(self, l):
+    def _shot(self, l, mode='base', inter='wfc', lambda_lum=1.0):
         lum = FLUX_REL[l]
-        self.shot = NeutronStarShot(lum, self.n_model, 
+        if mode=='base':
+            self.shot = NeutronStarShot(lum, inter, lambda_lum,
+                                    self.n_model, 
                                     self.config, 
                                     self.param, 
                                     self.grid, 
-                                    self.surface)
+                                    self.surface_base)
+        elif mode=='model':
+            self.shot = NeutronStarShot(lum, inter, lambda_lum,
+                                    self.n_model, 
+                                    self.config, 
+                                    self.param, 
+                                    self.grid, 
+                                    self.surface_model)
+        else:
+            print("What type of surface?")
+
         self.n_model = self.shot.n_model
         return self.shot
     
-    def _burst(self):
+    def _burst(self, mode=None, inter=None):
+        mode = self.mode if mode is None else mode 
+        inter = self.inter if inter is None else inter 
+        print(mode, inter)
         for l in range(self.n_model):
-            shot = self._shot(l)
+            shot = None
+            if mode=='base':
+                shot = self._shot(l, mode='base', inter=inter)
+            elif mode=='model':
+                shot_base = self._shot(l, mode='base', inter=inter)
+                shot_model = self._shot(l, mode='model', inter=inter, lambda_lum=1.0)
+                lambda_lum = shot_base.lum_sl/shot_model.lum_sl
+                shot = self._shot(l, mode='model', inter=inter, lambda_lum=lambda_lum)
             if self.n_model < N_MODEL:
                 break
             yield shot
     
-    def _burster(self):
+    def _burster(self, mode='base', inter='wfc'):
         shots = []
         for l in range(self.n_model):
-            lum = FLUX_REL[l]
-            shot = self._shot(lum)
+            shot = None
+            if mode=='base':
+                shot = self._shot(l, mode='base', inter=inter)
+            elif mode=='model':
+                shot_base = self._shot(l, mode='base', inter=inter)
+                shot_model = self._shot(l, mode='model', inter=inter, lambda_lum=1.0)
+                lambda_lum = shot_base.lum_sl/shot_model.lum_sl
+                shot = self._shot(l, mode='model', inter=inter, lambda_lum=lambda_lum)
             if self.n_model < N_MODEL:
                 break
             shots.append(shot)

@@ -62,6 +62,9 @@ def get_w_fun():
 
 def W_0(theta, theta_max, key_w, par_w):
     W_fun = get_w_fun()
+    if key_w[:-1:] == 'power-':
+        par_w = float(key_w[-1])
+        key_w = 'power-n'
     return W_fun[key_w](theta, theta_max, par_w)
 
 def W_model(theta, theta_max, key_w, par_w, omega_kep, omega_rot):

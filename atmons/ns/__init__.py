@@ -7,6 +7,7 @@ __all__ = [
     'phisical',
     'radiatinal',
     'graph',
+    'cli',
 ]
 
 from .classes import NeutronStar
@@ -19,6 +20,8 @@ from .phisical import *
 from .radiacional import *
 
 from .graph import *
+
+from .cli import *
 
 
 

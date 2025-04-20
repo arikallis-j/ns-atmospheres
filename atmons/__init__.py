@@ -3,6 +3,7 @@ from .cli.experiments import *
 from .ns.classes import NeutronStar
 from .ns.data_load import *
 from .ns.model import get_w_fun
+from .ns.cli import *
 
 # from .ns.const import *
 # from .ns.math import *
