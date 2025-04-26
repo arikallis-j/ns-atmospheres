@@ -179,18 +179,15 @@ class NeutronStarSurface:
     
         self.phi_init = np.full((N_th, N_ph), np.linspace(*ph_range, N_ph)).T
         self.theta_init = np.full((N_ph, N_th), np.linspace(*th_range, N_th))
-        self.theta_init_sym = np.where(self.theta_init < 90.0, self.theta_init, 180.0 - self.theta_init)
-        
+
         # dimensionful   
         self.phi_init = self.phi_init * DEG
         self.theta_init = self.theta_init * DEG
-        self.theta_init_sym = self.theta_init_sym * DEG
 
         self.phi = self.phi_init << RAD
         self.theta = self.theta_init << RAD
-        self.theta_sym = self.theta_init_sym << RAD
 
-        self.r_init = self.r_func(self.r_0, self.phi, self.theta_sym , par)
+        self.r_init = self.r_func(self.r_0, self.phi, self.theta , par)
         self.R = self.r_init << CM
 
         self.ph_range = (ph_range[0]*DEG) << RAD, (ph_range[1] * DEG) << RAD
@@ -199,8 +196,10 @@ class NeutronStarSurface:
         self.sin_ph, self.cos_ph = sin(self.phi), cos(self.phi)
 
         # model
+        kep_part = 0.9 # max: 0.921
         self.theta_max = par.th_star * DEG << RAD
-        self.W_model = W_model(self.theta, self.theta_max, par.w_func, par.w_par, par.omega_kep, par.omega_rot)
+        omega_kep_local = par.omega_kep * kep_part
+        self.W_model = W_model(self.theta, self.theta_max, par.w_func, par.w_par, omega_kep_local, par.omega_rot)
         self.omega_model = par.omega_rot * self.W_model
         self.Omega_model = Omega_metric(par.R_eq, par.M_cor, self.omega_model)
 
@@ -228,9 +227,10 @@ class NeutronStarSurface:
 
         # Gravity
         self.grv_real = grv_metric(self.theta, self.g_th, par.g_0)
-        self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.max(self.grv_real)) * self.grv_real.unit, self.grv_real)
-        self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.min(self.grv)) * self.grv.unit, self.grv)
-        self.log_g = log(self.grv / self.grv.unit)
+        # self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.max(self.grv_real)) * self.grv_real.unit, self.grv_real)
+        # self.grv = np.where(self.grv_real < 0, np.full(self.grv_real.shape, np.min(self.grv)) * self.grv.unit, self.grv)
+        self.grv = self.grv_real
+        self.log_g = log(self.grv_real / self.grv_real.unit)
 
         # rotational
         self.sin_psi, self.cos_psi = psi_rot(self.sin_th, self.cos_th, self.cos_ph, par.sin_i, par.cos_i)
@@ -290,7 +290,7 @@ class NeutronStarSurface:
         return self.__dict__
 
 class NeutronStarShot:
-    def __init__(self, lum, inter, lambda_lum, n_model, cfg, par, grid, surf):
+    def __init__(self, lum, inter, lambda_lum, xi_lum, n_model, cfg, par, grid, surf):
         # radiational
         self.n_model = n_model
         self.flux = lum * u.Unit()
@@ -299,6 +299,9 @@ class NeutronStarShot:
         self.Epsilon_eff = Epsilon(T_obs(self.Flux, par.zsch))
         self.Flux_edd_real = Flux_edd(surf.grv, par.kappa_e)
         self.flux, self.T_eff, self.n_model = T_flux_eff(cfg.flux_key, self.flux, self.T_eff, self.Flux_edd_real, self.n_model)
+        if xi_lum is not None:
+            self.flux = self.flux * xi_lum
+
         self.wwf_T, self.tcf_T = wwf_tcf_T(par.T_c, par.w_b, self.flux, surf.log_g)
 
         # spectra 
@@ -313,38 +316,50 @@ class NeutronStarShot:
         elif inter == 'be':
             self.rho = B_inter(self.flux, surf.log_g, surf.E_real, cfg.chem)
         
+        self.rho = np.where(self.rho < 0.0, self.rho * 0.0, self.rho)
+
         self.I_e = I_e_rad(self.rho, surf.cos_sig_1_E)
 
         self.B_Omega = B_Omega_rad(self.I_e, surf.kappa_E)
 
         self.B_int = self.B_Omega * surf.dOmega_obs_E
+        
         self.B_int_full = self.B_Omega * surf.dOmega_E
-        self.flux_full =  4.0 * PI * np.sum(self.B_int_full * surf.dE, axis=2) / par.Lum_obs
+        self.B_full = np.sum(self.B_int_full, axis=(0,1)) 
+        self.flux_full = 4.0 * PI * np.sum(self.B_int_full * surf.dE, axis=2) / par.Lum_obs
+        self.Lum_full = 4.0 * PI * np.sum(self.B_int_full * surf.dE)
+        self.lum_full = self.Lum_full / par.Lum_obs
+
+        self.Flux_full = self.Flux_edd_real * self.flux
+        self.Flux = np.sum(self.Flux_full)
 
         self.dOmega_obs_real = np.where(np.logical_not(surf.cos_sig < 0.0), surf.dOmega_obs, np.zeros(surf.dOmega_obs.shape))
         self.area_real = np.sum(self.dOmega_obs_real)
 
         self.cos_sig_E = np.full((grid.n_nu, grid.n_theta, grid.n_phi), surf.cos_sig.T).T
-        self.B_int_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))
-        self.B_int_real = np.where(surf.grv_real_E > 0.0, self.B_int_real, np.zeros(self.B_int_real.shape))
-        self.B_int_real = np.where(surf.spread_layer_E, self.B_int_real * lambda_lum, self.B_int_real)
-        
+        self.B_int_real = np.where(np.logical_not(self.cos_sig_E < 0.0), self.B_int, np.zeros(self.B_int.shape))     
         self.B_int_real_sl = np.where(surf.spread_layer_E, self.B_int_real, self.B_int_real * 0.0)
 
-        self.flux_real = np.sum(self.B_int_real * surf.dE, axis=2)
+        self.flux_real = 4.0 * PI * np.sum(self.B_int_real * surf.dE, axis=2)  / par.Lum_obs
         self.B_real = np.sum(self.B_int_real, axis=(0,1)) 
         self.Lum = 4.0 * PI * np.sum(self.B_int_real * surf.dE)
         self.lum = self.Lum / par.Lum_obs
 
-        self.flux_real_sl = np.sum(self.B_int_real_sl * surf.dE, axis=2)
+        self.flux_real_sl = 4.0 * PI * np.sum(self.B_int_real_sl * surf.dE, axis=2) / par.Lum_obs
+        self.Flux_full_sl = np.where(surf.spread_layer, self.Flux_full, self.Flux_full * 0.0)
+        self.Flux_sl = np.sum(self.Flux_full_sl)
+        self.xi_sl = self.Flux_sl / self.Flux
         self.B_real_sl = np.sum(self.B_int_real_sl, axis=(0,1)) 
         self.Lum_sl = 4.0 * PI * np.sum(self.B_int_real_sl * surf.dE)
         self.lum_sl = self.Lum_sl / par.Lum_obs
 
+
         self.E_null = surf.E[0,0,:]
+        self.dE_null = surf.dE[0,0,:]
 
         self.w, self.fc = w_fc_rad(par.area_0, self.Epsilon_eff, self.E_null, self.B_real)
         self.lambda_lum = lambda_lum
+        self.xi_lum = xi_lum
         
     def __str__(self):
         # TODO: more fancy output
@@ -363,6 +378,7 @@ class NeutronStar:
     def __init__(self, config, grid, mode=None, inter=None):
         self.n_model = N_MODEL
         self.lambda_lum = 1.0
+        self.xi_lum = None
         self._init_config(config)
         self._init_grid(grid)
         self._init_ns()
@@ -403,6 +419,7 @@ class NeutronStar:
         self.shot = NeutronStarShot(lum, 
             self.inter,
             self.lambda_lum,
+            self.xi_lum,
             self.n_model, 
             self.config, 
             self.param, 
@@ -411,17 +428,18 @@ class NeutronStar:
 
         self.n_model = self.shot.n_model
 
-    def _shot(self, l, mode='base', inter='wfc', lambda_lum=1.0):
-        lum = FLUX_REL[l]
+    def _shot(self, l, lum=None, mode='base', inter='wfc', lambda_lum=1.0, xi_lum=None):
+        if lum is None:  
+            lum = FLUX_REL[l]
         if mode=='base':
-            self.shot = NeutronStarShot(lum, inter, lambda_lum,
+            self.shot = NeutronStarShot(lum, inter, lambda_lum, xi_lum,
                                     self.n_model, 
                                     self.config, 
                                     self.param, 
                                     self.grid, 
                                     self.surface_base)
         elif mode=='model':
-            self.shot = NeutronStarShot(lum, inter, lambda_lum,
+            self.shot = NeutronStarShot(lum, inter, lambda_lum, xi_lum,
                                     self.n_model, 
                                     self.config, 
                                     self.param, 
@@ -433,22 +451,35 @@ class NeutronStar:
         self.n_model = self.shot.n_model
         return self.shot
     
-    def _burst(self, mode=None, inter=None):
+    def _burst(self, mode=None, inter=None, lum=None):
         mode = self.mode if mode is None else mode 
         inter = self.inter if inter is None else inter 
-        print(mode, inter)
-        for l in range(self.n_model):
+        generator = None
+        K = -1 
+        if lum==None:
+            generator = range(self.n_model)
+        else:
+            for k in range(len(FLUX_REL)):
+                if lum==FLUX_REL[k]:
+                    K = k
+                    break
+            generator = range(K, K+1)
+        
+        for l in generator:
             shot = None
             if mode=='base':
-                shot = self._shot(l, mode='base', inter=inter)
+                shot = self._shot(l, lum=lum, mode='base', inter=inter)
             elif mode=='model':
-                shot_base = self._shot(l, mode='base', inter=inter)
-                shot_model = self._shot(l, mode='model', inter=inter, lambda_lum=1.0)
-                lambda_lum = shot_base.lum_sl/shot_model.lum_sl
-                shot = self._shot(l, mode='model', inter=inter, lambda_lum=lambda_lum)
+                shot_base = self._shot(l, lum=lum, mode='base', inter=inter)
+                shot_model = self._shot(l, lum=lum, mode='model', inter=inter, lambda_lum=1.0)
+                #lambda_lum = shot_base.xi_sl/shot_model.xi_sl if shot_model.xi_sl!=0.0 else 0.0
+                lambda_lum = 1.0
+                xi_lum = shot_base.Flux_full/shot_model.Flux_full 
+                shot = self._shot(l, lum=lum,mode='model', inter=inter, lambda_lum=lambda_lum, xi_lum=xi_lum)
             if self.n_model < N_MODEL:
                 break
             yield shot
+ 
     
     def _burster(self, mode='base', inter='wfc'):
         shots = []
@@ -459,7 +490,7 @@ class NeutronStar:
             elif mode=='model':
                 shot_base = self._shot(l, mode='base', inter=inter)
                 shot_model = self._shot(l, mode='model', inter=inter, lambda_lum=1.0)
-                lambda_lum = shot_base.lum_sl/shot_model.lum_sl
+                lambda_lum = shot_base.lum_sl/shot_model.lum_sl if shot_model.lum_sl!=0.0 else 0.0
                 shot = self._shot(l, mode='model', inter=inter, lambda_lum=lambda_lum)
             if self.n_model < N_MODEL:
                 break
@@ -475,4 +506,5 @@ class NeutronStar:
     
     def output(self):
         return self.__dict__
+    
     

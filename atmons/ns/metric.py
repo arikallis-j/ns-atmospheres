@@ -139,7 +139,7 @@ def g_metric(sin_th, cos_th, chi, Omega):
     ep = (cp + (dp - d60 + fp * Omega2) * Omega2) * Omega2
 
     g_th = 1.0 + ee * sin_th**2 + ep * cos_th**2 + ( d60 + f60 * Omega2 ) * Omega2**2 * cos_th
-    g_th_1 = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2
+    #g_th_1 = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2
 
     return g_th
 

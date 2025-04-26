@@ -248,90 +248,102 @@ def map2(X, F, Y):
 
 #     return a + (b + c * xnew) * xnew
 
-# def map1(X, F, Y):     
-#     X = np.array(X)
-#     F = np.array(F)
-#     Y = np.array(Y)
-#     #print(X.shape, F.shape, Y.shape)
+def map1(X, F, Y, label_flag=True):     
+    X = np.array(X)
+    F = np.array(F)
+    Y = np.array(Y)
+    # #print(X.shape, F.shape, Y.shape)
 
-#     l_shape = X.shape[0]
-#     p_shape = F.shape[1]
-#     g_shape_a = Y.shape[0]
-#     g_shape_b = Y.shape[1]
-
-#     X = np.full((g_shape_b, g_shape_a, p_shape, l_shape), X.T).T
-#     Y = np.full((p_shape, g_shape_a, g_shape_b), Y)
-
-#     X = X.reshape((l_shape, p_shape*g_shape_a*g_shape_b))
-#     F = F.reshape((l_shape, p_shape*g_shape_a*g_shape_b))
+    l_shape = X.shape[0]
     
-#     Y = Y.reshape((p_shape*g_shape_a*g_shape_b))
+    g_shape = Y.shape
+    g_T_shape = Y.T.shape
 
-#     d_shape = F[0,:].shape
+    p_shape = F.shape[1:-len(g_shape):]
+    p_T_shape = F.T.shape[len(g_shape):-1:]
+    # print(p_shape, p_T_shape)
 
-#     R = np.full(d_shape, 0.0)
+    X = np.full((*g_T_shape, *p_T_shape, l_shape), X.T).T.reshape((l_shape, -1))
+    Y = np.full((*p_shape, *g_shape), Y)
 
-#     N = l_shape - 1
 
-#     for j in range(X.shape[1]):
-#         #print(100*j/X.shape[1], "%")
-#         a, b, c = 0.0, 0.0, 0.0
-#         l = 1
-#         #print(Y[j], X[l,j], Y[j] >= X[l,j])
-#         while l < N and Y[j] >= X[l,j]:
-#             l += 1
+    F = F.reshape((l_shape, -1))
+    
+    Y = Y.ravel()
+
+    d_shape = F[0,:].shape
+
+    R = np.zeros(d_shape)
+
+    N = l_shape - 1
+    label = None
+    for j in range(X.shape[1]):
+        #print(100*j/X.shape[1], "%")
+        a, b, c = 0.0, 0.0, 0.0
+        l = 1
+        #print(Y[j], X[l,j], Y[j] >= X[l,j])
+        while l < N and Y[j] >= X[l,j]:
+            l += 1
             
-#         # Краевой случай для l == 1 or l == N
-#         if l == 1 or l == N:
-#             #print("Border case: line interpolation")
-#             l = min(N - 1, l)
-#             x1, x0 = X[l,j], X[l-1,j]
-#             f1, f0 = F[l,j], F[l-1,j]
-#             c = 0.0
-#             b = (f1 - f0) / (x1 - x0)
-#             a = f1 - x1 * b
-#             #print(1,l,a,b,c)
+        # Краевой случай для l == 1 or l == N
+        if l == 1 or l == N:
+            #print("Border case: line interpolation")
+            l = min(N - 1, l)
+            x1, x0 = X[l,j], X[l-1,j]
+            f1, f0 = F[l,j], F[l-1,j]
+            c = 0.0
+            b = (f1 - f0) / (x1 - x0)
+            a = f1 - x1 * b
+            # if (a + b * Y[j]) < 0.0:
+            #     a, b = 0.0, 0.0
+            label = f"Border case: line interpolation, l = {l}"
+            # label += f"f1 = {f1}, f0 = {f0}\n"
+            # label += f"x1 = {x1}, x0 = {x0}\n"
+            # label += f"a = {a}, b = {b}, y = {Y[j]}\n"
+            # label += f"a + b*y = {a + b * Y[j]}\n"
         
-#         # Основная квадратичная интерполяция
-#         else:
-#             x2, x1, x0 = X[l,j], X[l-1,j], X[l-2,j]
-#             f2, f1, f0 = F[l,j], F[l-1,j], F[l-2,j]
+        # Основная квадратичная интерполяция
+        else:
+            x2, x1, x0 = X[l,j], X[l-1,j], X[l-2,j]
+            f2, f1, f0 = F[l,j], F[l-1,j], F[l-2,j]
 
-#             d  = (f1 - f0) / (x1 - x0)
-#             c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
-#             b = d - (x1 + x0) * c
-#             a = f0 - x0 * d + x1 * x0 * c
+            d  = (f1 - f0) / (x1 - x0)
+            c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+            b = d - (x1 + x0) * c
+            a = f0 - x0 * d + x1 * x0 * c
 
-#             cm , bm, am = c, b, a
+            cm , bm, am = c, b, a
             
-#             # Дополнительная квадратичная интерполяция, если не (почти) краевой случай
-#             if l != N - 1:
-#                 #print("General case: quadric interpolation with correction")
-#                 x2, x1, x0 = X[l+1,j], X[l,j], X[l-1,j]
-#                 f2, f1, f0 = F[l+1,j], F[l,j], F[l-1,j]
+            # Дополнительная квадратичная интерполяция, если не (почти) краевой случай
+            if l != N - 1:
+                label = "General case: quadric interpolation with correction"
+                #print("General case: quadric interpolation with correction")
+                x2, x1, x0 = X[l+1,j], X[l,j], X[l-1,j]
+                f2, f1, f0 = F[l+1,j], F[l,j], F[l-1,j]
 
-#                 d  = (f1 - f0) / (x1 - x0)
-#                 c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
-#                 b = d - (x1 + x0) * c
-#                 a = f0 - x0 * d + x1 * x0 * c
+                d  = (f1 - f0) / (x1 - x0)
+                c = (f2 / ((x2 - x1) * (x2 - x0))) + ((f0 / (x2 - x0)) - (f1 / (x2 - x1))) / (x1 - x0)
+                b = d - (x1 + x0) * c
+                a = f0 - x0 * d + x1 * x0 * c
 
-#                 cp , bp, ap = c, b, a
+                cp , bp, ap = c, b, a
 
-#                 wt = abs(cp) / (abs(cp) + abs(cm)) if abs(cp) != 0 else 0.0
+                wt = abs(cp) / (abs(cp) + abs(cm)) if abs(cp) != 0 else 0.0
 
-#                 a = ap + wt * (am - ap)
-#                 b = bp + wt * (bm - bp)
-#                 c = cp + wt * (cm - cp)
-#                 #print(3,l,a,b,c)
-#             else:
-#                 pass
-#                 #print(2,l,a,b,c)
-#                 #print("Specific case: quadric interpolation without correction")
+                a = ap + wt * (am - ap)
+                b = bp + wt * (bm - bp)
+                c = cp + wt * (cm - cp)
+                #print(3,l,a,b,c)
+            else:
+                label = "Specific case: quadric interpolation without correction"
+                #print(2,l,a,b,c)
+                #print("Specific case: quadric interpolation without correction")
 
 
-#         R[j] = a + (b + c * Y[j]) * Y[j]
-#         #print(R[j])
-#     return R.reshape(p_shape, g_shape_a, g_shape_b)
+        R[j] = a + (b + c * Y[j]) * Y[j]
+        if R[j] < 0 and label_flag:
+            print(label)
+    return R.reshape(*p_shape, *g_shape)
 
 # from scipy.interpolate import interp1d
 # def map_3(X, F, Y):
