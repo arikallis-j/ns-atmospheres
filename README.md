@@ -38,7 +38,7 @@ config, grid = loader("my_neutron_star")
 
 3. Create your neutron star and generator of burst
 ```python
-ns = NeurtonStar(config,grid)
+ns = NeutronStar(config,grid)
 burst = ns.burst()
 ```
 
@@ -50,7 +50,7 @@ for shot in burst:
 
 ## Explore neutron star: touch its parameters
 ```python
-ns = NeurtonStar(config,grid)
+ns = NeutronStar(config,grid)
 burst = ns.burst()
 ```
 
