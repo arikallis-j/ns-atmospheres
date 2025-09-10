@@ -145,11 +145,16 @@ def g_metric(sin_th, cos_th, chi, Omega, Omega_sp, i_bar):
     #ep = (cp + (dp - d60 + (fp - f60) * Omega2) * Omega2) * Omega2
     ep = (cp + (dp - d60 + fp * Omega2) * Omega2) * Omega2
 
+<<<<<<< HEAD:atmons/function/metrical.py
     # rapidly rotating NS approx (Eq. (50) in AlGendy & Morsink (2014))
     g_th_rapid = 1.0 + ee * sin_th**2 + ep * cos_th**2 + ( d60 + f60 * Omega2 ) * Omega2**2 * cos_th
     
     # slowly rotating NS approx (Eq. (48) in AlGendy & Morsink (2014))
     g_th_slow = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2
+=======
+    g_th = 1.0 + ee * sin_th**2 + ep * cos_th**2 + ( d60 + f60 * Omega2 ) * Omega2**2 * cos_th
+    #g_th_1 = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2
+>>>>>>> main:atmons/ns/metric.py
 
     g_th_cent = - Omega2 * sin_th**2 * (1 + chi * (-1 + 2*i_bar) + chi**2 * (-2 + 4*i_bar - 8*i_bar**2))
     g_th_cent_sl = - Omega_sp2 * sin_th**2 * (1 + chi * (-1 + 2*i_bar) + chi**2 * (-2 + 4*i_bar - 8*i_bar**2))

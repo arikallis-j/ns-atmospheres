@@ -32,7 +32,12 @@ config = {
 
 3. Create your neutron star
 ```python
+<<<<<<< HEAD
 ns = build_Neutron_Star(**config)
+=======
+ns = NeutronStar(config,grid)
+burst = ns.burst()
+>>>>>>> main
 ```
 
 4. Model burst in neutron star's atmosphere!
@@ -43,7 +48,12 @@ print(atm.B_real)
 
 ## Explore neutron star: touch its parameters
 ```python
+<<<<<<< HEAD
 ns = build_Neutron_Star()
+=======
+ns = NeutronStar(config,grid)
+burst = ns.burst()
+>>>>>>> main
 ```
 
 1. Neutron star parameters
