@@ -10,15 +10,40 @@ class Surface(Phenomenon):
         phi, theta, R, dR = grid.phi, grid.theta, grid.R, grid.dR
         sin_ph, cos_ph = grid.sin_ph, grid.cos_ph
         sin_th, cos_th = grid.sin_th, grid.cos_th
+        th_star = sp_layer.th_star
 
-        # spread layer
-        self.W_model = W_model(R, body.R_eq, theta, sp_layer.th_star, sp_layer.w_func, sp_layer.w_par, sp_layer.omega_kep_local, body.omega_rot)
+        Omega_bs =  Omega_metric(body.R_eq, body.M_cor, body.omega_rot) 
+        g_th_0 = g_metric(1, 0, body.chi, Omega_bs, Omega_bs, body.i_bar)
+        kappa_teory = np.sqrt(G_GRAV*body.M_cor/(body.R_eq * body.V_kep**2))
+        chi_i = (1 + body.chi * (-1 + 2*body.i_bar) + body.chi**2 * (-2 + 4*body.i_bar - 8*body.i_bar**2))
+        kappa_teory = kappa_teory * np.sqrt(g_th_0/chi_i + Omega_bs**2)
+        self.kappa_max = kappa_teory
+        
+        Omega_bs =  Omega_metric(body.R_eq, body.M_cor, body.omega_rot) 
+        g_th_null = 10.0**13.7 / body.g_0.value
+        g_th_0 = g_metric(1, 0, body.chi, Omega_bs, Omega_bs, body.i_bar)
+        kappa_teory = np.sqrt(G_GRAV*body.M_cor/(body.R_eq * body.V_kep**2))
+        chi_i = (1 + body.chi * (-1 + 2*body.i_bar) + body.chi**2 * (-2 + 4*body.i_bar - 8*body.i_bar**2))
+        kappa_teory = kappa_teory * np.sqrt((g_th_0 - g_th_null)/chi_i + Omega_bs**2)
+        self.kappa_int = kappa_teory
+
+        self.kappa_cr = body.omega_cr / body.omega_kep
+
+        kep_part_local = sp_layer.kep_part
+        kep_part_local = min(kep_part_local, self.kappa_max)
+        kep_part_local = min(kep_part_local, self.kappa_int)
+        # kep_part_local = min(kep_part_local, self.kappa_cr)
+        omega_kep_local = body.omega_kep * kep_part_local
+        self.kep_part = kep_part_local
+
+
+        self.W_model = W_model(R, body.R_eq, theta, th_star, sp_layer.w_func, sp_layer.w_par, omega_kep_local, body.omega_rot)
         self.W_base = np.ones(self.W_model.shape) * self.W_model.unit
         self.omega_model = body.omega_rot * self.W_model
         self.omega_base = body.omega_rot * self.W_base
 
         self.psi = abs(90 * DEG - theta) << RAD
-        self.spread_layer = self.psi <= sp_layer.th_star
+        self.spread_layer = self.psi <= th_star
         self.spread_layer_base = self.psi < 0.0
         self.spread_layer_true = self.spread_layer
         self.Omega_model = Omega_metric(body.R_eq, body.M_cor, self.omega_model)
@@ -37,14 +62,20 @@ class Surface(Phenomenon):
         self.omega_bar = omega_bar_metric(self.r_bar, self.u_bar, body.J)
         self.beta_ph = beta_ph_metric(R, sin_th, self.omega_bar, self.nu)
 
-        self.g_th = g_metric(sin_th, cos_th, body.chi, self.Omega_model)
+        self.g_th = g_metric(sin_th, cos_th, body.chi, self.Omega_base, self.Omega_model, body.i_bar)
 
         g = self.g_th * body.g_0.value
         g = g * hs(g - 1) + 1 * hs(1 - g)
         log_g = log(g)
         g_th_null = 10.0**13.7 / body.g_0.value
+        if (log_g <= 13.7).any():
+            print("Incorrect gravity")
         self.g_th = np.where(log_g > 13.7, self.g_th, self.g_th * 0.0 + g_th_null)
-        self.g_th_base = g_metric(sin_th, cos_th, body.chi, self.Omega_base)
+        self.g_th_base = g_metric(sin_th, cos_th, body.chi, self.Omega_base, self.Omega_base, body.i_bar)
+
+        # th_star = max_latitude(self.g_th, self.g_th_base, theta, th_star)
+        
+        # self.th_star = th_star
 
         self.f_th = f_theta(R, dR, self.nu, self.B, self.zeta)
         self.sin_eta, self.cos_eta = eta_metric(self.f_th)

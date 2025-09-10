@@ -47,7 +47,7 @@ class Atmosphere(Phenomenon):
         self.T_eff = T_SB(self.Flux)
         self.Epsilon_eff = Epsilon(T_obs(self.Flux, body.zsch))
         
-        self.flux, self.T_eff, self.n_model = self._flux_T_eff(cfg.flux_key, self.flux, self.T_eff, surface.Flux_edd_base, surface.Flux_edd, self.n_model)
+        self.flux, self.t_eff, self.n_model = self._flux_T_eff(cfg.flux_key, self.flux, self.T_eff, surface.Flux_edd_base, surface.Flux_edd, self.n_model)
         
         # spectra 
         if spec_key == 'wfc':

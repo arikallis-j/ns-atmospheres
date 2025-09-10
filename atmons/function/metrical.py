@@ -34,7 +34,10 @@ def i_bar_metric(chi: Q[DIMLESS]) -> Q[DIMLESS]:
 
 # Average gravity by general relativity
 def g_0_metric(R: Q[CM], M: Q[GRAM], chi: Q[DIMLESS]) -> Q[CM / SEC**2]:
-    """Calculate g_0 for the neutron star metric (II.eq.A.15)"""
+    """Calculate g_0 for the neutron star metric (II.eq.A.15)
+    or: (Eq. (31) in AlGendy & Morsink (2014))
+    """
+    
     g0 = (G_GRAV * M / R**2) / sqrt(1.0 - 2.0 * chi)
     return g0 << CM / SEC**2
 
@@ -120,9 +123,11 @@ def beta_ph_metric(R, sin_th, omega_bar, nu):
     beta_ph = R * omega_bar / C_LIGHT * exp(-nu) * sin_th # (II.eq.B.36)
     return beta_ph << u.Unit()
 
-def g_metric(sin_th, cos_th, chi, Omega):
+def g_metric(sin_th, cos_th, chi, Omega, Omega_sp, i_bar):
     cos_th = np.where(cos_th < 0.0, -cos_th, cos_th)
+    
     Omega2 = Omega**2
+    Omega_sp2 = Omega_sp**2
 
     ce = 0.776 * chi - 0.791 # (II.eq.A.16)
     cp = 1.138 - 1.431 * chi # (II.eq.A.17)
@@ -145,8 +150,14 @@ def g_metric(sin_th, cos_th, chi, Omega):
     
     # slowly rotating NS approx (Eq. (48) in AlGendy & Morsink (2014))
     g_th_slow = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2
+
+    g_th_cent = - Omega2 * sin_th**2 * (1 + chi * (-1 + 2*i_bar) + chi**2 * (-2 + 4*i_bar - 8*i_bar**2))
+    g_th_cent_sl = - Omega_sp2 * sin_th**2 * (1 + chi * (-1 + 2*i_bar) + chi**2 * (-2 + 4*i_bar - 8*i_bar**2))
+    delta_g_th_cent =  g_th_cent_sl - g_th_cent
+
+    g_th = g_th_rapid + delta_g_th_cent
     
-    return g_th_rapid
+    return g_th
 
 def grv_metric(theta, g_th, g_0):
     g = g_th * g_0 

@@ -37,7 +37,6 @@ def Vk_line(rho, t, xi, par_w):
     return W
 
 def W_power_n(rho, t, xi, par_w):
-    print(par_w)
     n = par_w
     W = (1 - t**(n)) * hs(1 - t)
     return W

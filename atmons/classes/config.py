@@ -5,10 +5,10 @@ from dataclasses import dataclass
 class BodyConfig:
     name: str = 'J0000+0000'
     chem: str = 's1'
-    rel: bool = False
+    rel: bool = False#True
 
-    r_ns: float = 12.0
-    m_ns: float = 1.5
+    r_ns: float = 12.0 #15.48 
+    m_ns: float = 1.5 #1.519
     v_rot: float = 600.0
     i_ang: float = 60.0
 
@@ -17,6 +17,7 @@ class SpreadLayerConfig:
     w_func: str = 'base'
     th_star: float = 45.0
     w_par: tuple = 1
+    possible_th: bool = True
 
 @dataclass
 class GridConfig:
@@ -33,7 +34,7 @@ class SpectrumConfig:
     spec_key: str = 'wfc'
     n_nu: int = 500
     rng_erg: tuple[float, float] = (0.1, 20.0)
-    zsch_key: bool = False
+    zsch_key: bool = True
 
     fc_key: str = 1
 

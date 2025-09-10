@@ -74,3 +74,5 @@ class Body(Phenomenon):
         self.V_rot = V_rot(self.omega_rot, self.R_eq)
         self.V_kep = V_kep(self.g_0, self.R_eq)
         self.omega_kep = omega_rot(self.V_kep, self.R_eq)
+        
+        self.omega_cr = omega(self.v_cr)

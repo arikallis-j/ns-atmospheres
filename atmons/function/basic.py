@@ -90,3 +90,16 @@ def rel_m_cor(m_ns: Q[M_SUN], r_ns: Q[KM], v_rot: Q[HZ]) -> Q[M_SUN]:
     """Inverse of equatorial radius of Neutron Star (II.eq.2)"""
     m = inverse(m_cor, m_ns, (r_ns, v_rot), base=1.0, pw=5)
     return m
+
+def max_latitude(g_mod, g_base, theta, psi_star):
+    """Maximum latitude for the model"""
+    l_arr = len(g_mod[0, ::]) // 2
+    g_base_th = g_base[0,:l_arr-1:]
+    g_mod_th = g_mod[0,:l_arr-1:]
+    theta_th = theta[0,:l_arr-1:]
+    th_max = 90*DEG - psi_star << RAD
+    for k in range(1,len(g_mod_th)):
+        if (g_mod_th[k] - g_base_th[k])*(g_mod_th[k-1] - g_base_th[k-1]) < 0:
+            th_max = (theta_th[k] + theta_th[k-1])/2
+    psi_max = 90*DEG - th_max << DEG
+    return psi_max
