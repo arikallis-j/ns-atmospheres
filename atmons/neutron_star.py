@@ -22,11 +22,11 @@ def build_Neutron_Star(
         N_ph=30, N_th=30, N_nu=500,
         w_func='const', th_star=40, w_par=1.0,
         spec_key = 'wfc', flux_key='rel',
-        lum=0.1,
+        lum=0.1, r_ns=12, m_ns=1.4,
     ):
 
 
-    bc = BodyConfig(chem=chem, v_rot=v_rot, i_ang=i_ang)
+    bc = BodyConfig(chem=chem, v_rot=v_rot, i_ang=i_ang, r_ns=r_ns, m_ns=m_ns)
     body = Body(bc)
 
     slc = SpreadLayerConfig(w_func=w_func, th_star=th_star, w_par=w_par)

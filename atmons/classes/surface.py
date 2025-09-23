@@ -30,8 +30,8 @@ class Surface(Phenomenon):
         self.kappa_cr = body.omega_cr / body.omega_kep
 
         kep_part_local = sp_layer.kep_part
-        kep_part_local = min(kep_part_local, self.kappa_max)
-        kep_part_local = min(kep_part_local, self.kappa_int)
+        # kep_part_local = min(kep_part_local, self.kappa_max)
+        # kep_part_local = min(kep_part_local, self.kappa_int)
         # kep_part_local = min(kep_part_local, self.kappa_cr)
         omega_kep_local = body.omega_kep * kep_part_local
         self.kep_part = kep_part_local
@@ -67,10 +67,11 @@ class Surface(Phenomenon):
         g = self.g_th * body.g_0.value
         g = g * hs(g - 1) + 1 * hs(1 - g)
         log_g = log(g)
-        g_th_null = 10.0**13.7 / body.g_0.value
-        if (log_g <= 13.7).any():
+        log_g_crit = 13.0
+        g_th_null = 10.0**log_g_crit / body.g_0.value
+        if (log_g <= log_g_crit).any():
             print("Incorrect gravity")
-        self.g_th = np.where(log_g > 13.7, self.g_th, self.g_th * 0.0 + g_th_null)
+        self.g_th = np.where(log_g > log_g_crit, self.g_th, self.g_th * 0.0 + g_th_null)
         self.g_th_base = g_metric(sin_th, cos_th, body.chi, self.Omega_base, self.Omega_base, body.i_bar)
 
         # th_star = max_latitude(self.g_th, self.g_th_base, theta, th_star)

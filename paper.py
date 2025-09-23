@@ -1149,6 +1149,62 @@ class BaseFc(Experiment):
 
         return 0
     
+class DiscussModel(Experiment):
+    def __init__(self, name, **param):
+        super().__init__(name, **param)
+        self.const = Const()
+
+    def do_experiment(self, experiment='test'):
+        config = {
+            'v_rot': 600,
+            'm_ns': 1.4,
+            'r_ns': 12,
+            'i_ang': 90,
+            'chem': 's1',
+            'spec_key': 'be',
+            'th_star': 60,
+            'w_func': 'const',
+            'w_par': 0.932,
+        }
+        ns = build_Neutron_Star(**config)
+        config['w_func'] = 'base'
+        ns_base = build_Neutron_Star(**config)
+    
+        shot = ns.atmosphere
+        surf = ns.surface
+        sp_layer = ns.sp_layer
+
+        shot_base = ns_base.atmosphere
+        
+        g_th = surf.log_g.value[0][len(surf.g_th[0])//2::]
+        flux = shot.flux.value[0][len(surf.g_th[0])//2::]
+        plt.style.use('seaborn-v0_8-whitegrid')
+        _, ax = plt.subplots(figsize=(7,7))
+        # line
+        #ax.set_title("$ v(\\theta) \\sim " + "1 - \\theta/\\theta_{\\star}" + "$ | $ v(0) = " + str(config['w_par']) + "\\cdot v_{kep}" + "$ | $\\theta_{\\star} = " + str(config['th_star']) + "^{\\circ}$ ", loc='center', fontsize=20)
+        # const
+        ax.set_title("$ v(\\theta) \\sim " + "const" + "$ | $ v(0) = " + str(config['w_par']) + "\\cdot v_{kep}" + "$ | $\\theta_{\\star} = " + str(config['th_star']) + "^{\\circ}$ ", loc='center', fontsize=20)
+        ax.set_xlabel("$\\varepsilon, keV$")
+        ax.set_ylabel("$B(\\varepsilon), 10^{36} erg s^{-1} keV^{-1} sr^{-1} $")
+        ax.grid(True, which='minor')
+        ax.set_ylim(0.003, 0.5)
+        ax.set_xlim(1.0, 20)
+
+        print("N  | L/L_Edd  | L_sl/L_Edd | f_c      | w        | kep/rot")
+        print(f"{'be':<3}| {shot.lum:.6f} | {shot.xi_sl:.6f}   | {shot.fc:.6f} | {shot.w:.6f} | {sp_layer.rel_omega:.6f} ")
+        print(g_th)
+        print(flux)
+        
+        ax.loglog(shot.E_null/shot.E_null.unit, shot.B_real/shot.B_real.unit/10**36, color='blue', label='spread layer')
+        ax.loglog(shot_base.E_null/shot_base.E_null.unit, shot_base.B_real/shot_base.B_real.unit/10**36, color='red', label='base spectrum')
+        ax.legend()
+        plt.show()
+        return 0
+
+
+model = DiscussModel(name = 'discussion')
+
+model()
 
 spectra_rel = BaseSpectra(
     name = 'ended-spectra-new', 
@@ -1183,7 +1239,7 @@ model_rel = BaseModel(
     w_func='const',
 )
 
-model_rel()
+# model_rel()
 
 
 # model_fc = BaseFc(
