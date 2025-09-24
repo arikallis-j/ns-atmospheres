@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Pipeline - ns-atmosphere</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Pipeline";
+        var mkdocs_page_input_path = "pipeline.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ns-atmosphere
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting Started</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Pipeline</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">Нейтронная звезда как тело</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#basic">basic</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#phisical">phisical</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#chemical">chemical</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#photometrical">photometrical</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#rotational">rotational</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#relativical">relativical</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#metrical">metrical</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#keplerian">keplerian</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../structure/">Structure</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ns-atmosphere</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Pipeline</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="pipeline">Pipeline</h1>
+<p><em>Создаем нейтронную звезду с нуля</em></p>
+<h2 id="_1">Нейтронная звезда как тело</h2>
+<p>Для начала, создадим саму нейтронную звезду.<br />
+Нам необходимо задать следующие параметры:</p>
+<p><code>name</code> : название нейтронной звезды (по дефолту: 'J0000+0000')<br />
+<code>chem</code> : химический состав  </p>
+<pre><code>- s1: солнечная металличность  
+- s001: металичность 1/100 солнечной  
+- he: гелиевая атмосфера
+</code></pre>
+<p><code>rel</code> : задаем ли мы массу и радиус сразу с поправками ОТО, или же нет<br />
+<code>r_ns</code> : радиус нейтронной звезды в километрах (или же экваториальный радиус)<br />
+<code>m_ns</code> : масса нейтронной звезды в массах солнца (или же скорректированная масса)<br />
+<code>v_rot</code> : частота вращения нейтронной звезды в герцах<br />
+<code>i_ang</code> : угол наклона оси вращения к лучу зрения в градусах  </p>
+<pre><code class="language-python">config_body = {
+    'name': 'J0000+0000',
+    'chem': 's1',
+    'rel': False,
+    'r_ns': 12.0,
+    'm_ns': 1.5,
+    'v_rot': 600.0,
+    'i_ang': 60.0,
+}
+
+bc = BodyConfig(**config_body)
+body = Body(bc)
+</code></pre>
+<p>В этот момент создается следующий объект:</p>
+<pre><code class="language-python">class Body(Phenomenon):
+    def __init__(self, cfg=None):
+        if cfg is None:
+            return None
+
+        self.name = cfg.name
+
+        # basic
+        ...
+
+        # phisical
+        ...
+
+        # chemical
+        ...
+
+        # photometrical
+        ...
+
+        # rotational
+        ...
+
+        # relativical
+        ...
+
+        # metrical
+        ...
+
+        # keplerian
+        ...
+</code></pre>
+<p>Разберем по порядку. </p>
+<h3 id="basic">basic</h3>
+<pre><code class="language-python">r_ns = cfg.r_ns * KM
+m_ns = cfg.m_ns * M_SUN
+v_rot =  cfg.v_rot * HZ
+chem = cfg.chem
+
+if cfg.rel:
+    r = rel_r_eq(r_ns, m_ns, v_rot)
+    m = rel_m_cor(m_ns, r_ns, v_rot)
+    r_eq, m_cor = r_ns, m_ns
+else:
+    r, m = r_ns, m_ns
+    r_eq = r_eq(r, m, v_rot)
+    m_cor = m_cor(m, r, v_rot)
+
+R = R_NS(r, m)
+M = M_NS(m)
+</code></pre>
+<p>Помимо инциализации, здесь также рассчитываются экваториальный радиус и скорректированная масса нейтронной звезды по следующим формулам:
+$$
+R_e = R \left[ 0.9766 + \frac{0.025}{1.07 - \bar{\nu}}  + 0.07 M^{3/2}_{1.4} \bar{\nu}^2 \right] 
+$$</p>
+<div class="arithmatex">\[
+M' = M \left[ a_0 + \frac{a_1}{1.1 - \bar{\nu}}  + a_2 \bar{\nu}^2 \right]
+\]</div>
+<p>Подробнее смотрите в Suleimanov et al. (2020), выражения (2) и (3).</p>
+<h3 id="phisical">phisical</h3>
+<pre><code class="language-python">R_sch = R_sch(M)
+zsch = zsch(R, R_sch)
+area_0 = Surf(R, zsch)
+g = g(R, M, zsch)
+log_g = log(g / g.unit)
+</code></pre>
+<p>Здесь вычисляются радиус Шврацшильда, гравитационное красное смещение, а также площадь поверхности и среднее ускорение свободного падения с учетом красного смещения:</p>
+<div class="arithmatex">\[
+R_{s} = 2 \frac{G M}{c^2} 
+\]</div>
+<div class="arithmatex">\[
+z + 1 = \frac{1}{\sqrt{1 - R_s/R}}
+\]</div>
+<div class="arithmatex">\[
+S = (R \cdot (1 + z))^2
+\]</div>
+<div class="arithmatex">\[
+g = \frac{GM}{R^2} \cdot (1 + z)
+\]</div>
+<h3 id="chemical">chemical</h3>
+<pre><code class="language-python">X_hyd = X_hyd(chem)
+kappa_e = kappa_e(X_hyd)
+</code></pre>
+<p>Здесь вычисляется массовая доля водорода и прозрачность при томпсоновском рассеянии:</p>
+<div class="arithmatex">\[
+X = 
+\begin{cases}
+0.7374 &amp; \text{если } \text{сhem = 's1'} \text{ или } \text{сhem = 's001'} \\
+0 &amp; \text{если } \text{сhem = 'he'} 
+\end{cases}
+\]</div>
+<div class="arithmatex">\[
+\kappa_{e} =  0.2 \cdot (1.0 + X) \cdot \text{cm}^2 \text{g}^{-1}
+\]</div>
+<h3 id="photometrical">photometrical</h3>
+<pre><code class="language-python">Flux_edd = Flux_edd(g, kappa_e)
+T_edd = T_obs(Flux_edd, zsch)
+Theta_edd = Theta(T_edd)
+Epsilon_edd = Epsilon(T_edd)
+Lum_edd = Lumen(Flux_edd, R)
+Lum_obs = Lumen_obs(Flux_edd, R, zsch)
+</code></pre>
+<h3 id="rotational">rotational</h3>
+<pre><code class="language-python">nu_rot = v_rot
+incl_ang = (cfg.i_ang * DEG).to(RAD)
+sin_i = sin(incl_ang)
+cos_i = cos(incl_ang)
+omega_rot = omega(nu_rot)
+</code></pre>
+<h3 id="relativical">relativical</h3>
+<pre><code class="language-python">v_cr = nu_crit(r, m)
+v_rel = nu_relative(nu_rot, v_cr)
+M_cor = M_NS(m_cor)
+R_eq = R_NS(r_eq, m_cor)
+R_sch_cor = R_sch(M_cor)
+</code></pre>
+<h3 id="metrical">metrical</h3>
+<pre><code class="language-python">chi = chi_metric(R_eq, M_cor)
+Omega = Omega_metric(R_eq, M_cor, omega_rot)
+q_c = q_c_metric(chi, Omega)
+b_c = b_c_metric(chi, Omega)
+i_bar = i_bar_metric(chi)
+I = I_NS(i_bar, R_eq, M_cor)
+J = J_NS(I, omega_rot)
+g_0 = g_0_metric(R_eq, M_cor, chi)
+</code></pre>
+<h3 id="keplerian">keplerian</h3>
+<pre><code class="language-python">V_rot = V_rot(omega_rot, R_eq)
+V_kep = V_kep(g_0, R_eq)
+omega_kep = omega_rot(V_kep, R_eq)
+omega_cr = omega(v_cr)
+</code></pre>
+<h1 id="_2">Сетка</h1>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../getting_started/" class="btn btn-neutral float-left" title="Getting Started"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../structure/" class="btn btn-neutral float-right" title="Structure">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../getting_started/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../structure/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
