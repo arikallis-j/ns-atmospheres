@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 #python3 setup.py bdist_wheel sdist
 #twine upload dist/*
 
-version = "0.1.0"
+version = "0.2.0"
 description = "Simple python library to work with neutron star's atmospheres"
 
 with open("README.md", "r") as f:
@@ -14,7 +14,7 @@ setup(
     name="atmons",
     version=version,
     description=description,
-    package_dir={"ns" : "", "cli": ""},
+    package_dir={"classes" : "", "consts": "","exps": "","funcs": ""},
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/arikallis-j/ns-atmospheres",

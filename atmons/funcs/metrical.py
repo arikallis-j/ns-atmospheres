@@ -1,7 +1,7 @@
 """
 Description of metrical relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Relative chi and Omega calculating
@@ -65,7 +65,7 @@ def u_metric(R_theta, R_sch):
 
 # Point dimensionless metric coefficients
 def r_u_metric(R, cos_th, q_c, b_c, R_sch, err=1e-8):
-    R_0 = R_sch / 2.0
+    R_0 = R_sch/2
     P2 = P_2(cos_th)
 
     u_mid, r_mid = np.zeros(cos_th.shape), np.zeros(cos_th.shape)
@@ -146,7 +146,7 @@ def g_metric(sin_th, cos_th, chi, Omega, Omega_sp, i_bar):
     ep = (cp + (dp - d60 + fp * Omega2) * Omega2) * Omega2
 
     # rapidly rotating NS approx (Eq. (50) in AlGendy & Morsink (2014))
-    g_th_rapid = 1.0 + ee * sin_th**2 + ep * cos_th**2 + ( d60 + f60 * Omega2 ) * Omega2**2 * cos_th
+    g_th_rapid = 1.0 + ee * sin_th**2 + ep * cos_th**2 + ( d60 * Omega2 ) * Omega2**2 * cos_th
     
     # slowly rotating NS approx (Eq. (48) in AlGendy & Morsink (2014))
     g_th_slow = 1.0 + ce * sin_th**2 * Omega2 + cp * cos_th**2 * Omega2

@@ -1,7 +1,7 @@
 """
 Description of radiational relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Base radiational functions

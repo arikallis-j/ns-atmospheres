@@ -1,7 +1,7 @@
 """
 Description of metrical relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Rotational metric coefficients

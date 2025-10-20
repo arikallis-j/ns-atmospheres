@@ -1,7 +1,7 @@
 """
 Description of phisical relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Inercia and Momentum

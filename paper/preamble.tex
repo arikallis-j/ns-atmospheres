@@ -1,0 +1,26 @@
+%Объявление стилей документа
+\documentclass[twocolumn, 10pt]{article}
+
+\setlength{\columnsep}{1cm}
+
+%Русская кодировка и шрифт
+\usepackage[english, russian]{babel}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+
+%Пакет для использования теорем
+\usepackage{amsthm}
+%Установка стиля для теоремы
+\theoremstyle{plain}
+
+%Создание нумерованного окружения для теорем
+\newtheorem{theorem}{Теорема}
+
+%Создание ненумерованного окружения для лемм
+\newtheorem*{lemma}{Лемма}
+
+%Пакеты Американского Математического Общества, которые никогда не будут лишними:
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{mathtools}

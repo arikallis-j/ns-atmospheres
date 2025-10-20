@@ -1,5 +1,5 @@
-from .function import *
-from .classes import *
+from ..funcs import *
+from ..classes import *
 
 @dataclass
 class NeutronStar:
@@ -34,7 +34,9 @@ def build_Neutron_Star(
 
     gc = GridConfig(n_phi=N_ph, n_theta=N_th)
     grid = Grid(gc, body)
-    surface = Surface(grid, body, sp_layer)
+
+    sf = SurfaceConfig(log_g_cr=13.7, kep_part_fn='none')
+    surface = Surface(sf, grid, body, sp_layer)
 
     sc = SpectrumConfig(n_nu=N_nu, spec_key=spec_key)
     spectrum = Spectrum(sc, body)
@@ -60,7 +62,9 @@ def build_Surface(
 
     gc = GridConfig(n_phi=N_ph, n_theta=N_th, unnull=unnull)
     grid = Grid(gc, body)
-    surface = Surface(grid, body, sp_layer)
+    
+    sf = SurfaceConfig(log_g_cr=13.7, kep_part_fn='none')
+    surface = Surface(sf, grid, body, sp_layer)
 
     neutron_star_surface = NeutronStarSurface(body, sp_layer, grid, surface)
 
@@ -70,8 +74,9 @@ def build_Surface(
 class NeutronStarComplex(Phenomenon):
     """Description of Atmosphere parameters"""
     def __init__(self, body_cfg = None, sp_layer_cfg = None, 
-                      grid_cfg = None, spec_cfg = None, 
-                      atmos_cfg = None, sys_cfg = None):
+                      grid_cfg = None, surf_cfg = None, 
+                      spec_cfg = None, atmos_cfg = None, 
+                      sys_cfg = None):
         
         if sys_cfg is None:
             sys_cfg = SystemConfig()
@@ -89,14 +94,16 @@ class NeutronStarComplex(Phenomenon):
             grid_cfg = GridConfig()
         grid = Grid(grid_cfg, body)
 
+        if surf_cfg is None:
+            surf_cfg = SurfaceConfig()
+        surface = Surface(surf_cfg, grid, body, sp_layer)
+
         if spec_cfg is None:
             spec_cfg = SpectrumConfig()
         spectrum = Spectrum(spec_cfg, body)
 
         if atmos_cfg is None:
             atmos_cfg = AtmosphereConfig()
-
-        surface = Surface(grid, body, sp_layer)
 
         # whole_atm = Atmosphere(ac, grid, spectrum, body, slayer, surface)
 
@@ -113,7 +120,7 @@ class NeutronStarComplex(Phenomenon):
         g = 0
         for subgrid in grid.get_batch(N_batches):
             s = 0
-            subsurf = Surface(subgrid, body, sp_layer)
+            subsurf = Surface(surf_cfg, subgrid, body, sp_layer)
             for subspec in spectrum.get_batch(M_batches):
                 print(f"Grid...{g}|{N_batches} Spectrum...{s}|{M_batches}")
                 cur_atm = Atmosphere(atmos_cfg, subgrid, subspec, body, sp_layer, subsurf)

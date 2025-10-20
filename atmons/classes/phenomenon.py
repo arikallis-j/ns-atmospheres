@@ -1,4 +1,4 @@
-from ..const import *
+from ..consts import *
 import json, os
 
 class Phenomenon:
@@ -6,7 +6,7 @@ class Phenomenon:
         pass
 
     def __str__(self):
-        return str(self.output()) # TODO: more fancy output
+        return str(self.output())
     
     def __call__(self):
         return self.output()

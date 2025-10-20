@@ -1,7 +1,7 @@
 """
 Description of interpolational relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 def wfc_inter(T_c, w_b, flux, log_g):

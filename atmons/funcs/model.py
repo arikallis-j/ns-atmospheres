@@ -1,7 +1,7 @@
 """
 Description of model relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 def W_none(rho, t, xi, par_w):

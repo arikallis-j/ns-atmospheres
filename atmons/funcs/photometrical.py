@@ -1,7 +1,7 @@
 """
 Description of photometrical relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Flux calculating

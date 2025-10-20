@@ -1,4 +1,4 @@
-from ..const import *
+from ..consts import *
 from dataclasses import dataclass
 
 @dataclass
@@ -28,6 +28,11 @@ class GridConfig:
     rng_theta: tuple[float, float] = (0.0, 180.0)
 
     unnull: bool = True
+
+@dataclass
+class SurfaceConfig:
+    kep_part_fn: str = 'none'
+    log_g_cr: float =  13.7
 
 @dataclass
 class SpectrumConfig:

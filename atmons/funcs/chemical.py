@@ -1,7 +1,7 @@
 """
 Description of chemical relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 
 # Hydrogen part and scattering opacity

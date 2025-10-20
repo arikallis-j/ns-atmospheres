@@ -1,7 +1,7 @@
 """
 Description of spectral relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
 import json, yaml
 

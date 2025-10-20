@@ -1,4 +1,4 @@
-from ..function import *
+from ..funcs import *
 from .phenomenon import *
 
 class Grid(Phenomenon):

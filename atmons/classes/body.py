@@ -1,4 +1,4 @@
-from ..function import *
+from ..funcs import *
 from .phenomenon import *
 
 class Body(Phenomenon):
@@ -27,7 +27,7 @@ class Body(Phenomenon):
         self.R = R_NS(self.r, self.m)
         self.M = M_NS(self.m)
 
-        # phisical
+        # physical
         self.R_sch = R_sch(self.M) # TODO: QUESTION ABOUT NON-CORRECTED SCHWARZSCHILD RADIUS
         self.zsch = zsch(self.R, self.R_sch)
         self.area_0 = Surf(self.R, self.zsch)
@@ -46,7 +46,7 @@ class Body(Phenomenon):
         self.Lum_edd = Lumen(self.Flux_edd, self.R)
         self.Lum_obs = Lumen_obs(self.Flux_edd, self.R, self.zsch)
 
-        # rotatinal
+        # rotational
         self.nu_rot = self.v_rot
         self.incl_ang = (cfg.i_ang * DEG).to(RAD)
         self.sin_i = sin(self.incl_ang)
@@ -74,5 +74,4 @@ class Body(Phenomenon):
         self.V_rot = V_rot(self.omega_rot, self.R_eq)
         self.V_kep = V_kep(self.g_0, self.R_eq)
         self.omega_kep = omega_rot(self.V_kep, self.R_eq)
-        
         self.omega_cr = omega(self.v_cr)

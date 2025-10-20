@@ -1,5 +1,5 @@
-from .function import *
-from .classes import *
+from ..funcs import *
+from ..classes import *
 
 def test_cli(name='User', *args, **kwargs):
     print(f"Hello, {name}!")

@@ -1,7 +1,7 @@
 """
 Description of basic relationships
 """
-from ..const import *
+from ..consts import *
 from .math import *
  
 # Mass and Radius in CGS system
